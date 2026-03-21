@@ -661,3 +661,320 @@ test.describe('Auth & Session', () => {
     expect(res.status()).toBe(400);
   });
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// CUSTOMER — DESKTOP (additional edge cases)
+// ════════════════════════════════════════════════════════════════════════════
+
+test.describe('Customer — API Edge Cases', () => {
+  test.use(DESKTOP);
+
+  test('CT-11: Availability without date param returns 400', async ({ page }) => {
+    const res = await page.request.get(`${BASE}/api/availability`);
+    expect(res.status()).toBe(400);
+  });
+
+  test('CT-12: Cancelled booking slot becomes available again', async ({ page }) => {
+    const slot = nextSlot();
+    // Book the slot
+    const b = await page.request.post(`${BASE}/api/bookings`, {
+      data: { customer_name:'CT12', customer_email:`ct12_${Date.now()}@test.com`, service_id:1, stylist_id:slot.stylist_id, appointment_date:slot.date, appointment_time:slot.time }
+    });
+    expect(b.status()).toBe(201);
+    const booking = await b.json();
+    // Cancel it via admin
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    await page.request.patch(`${BASE}/api/admin/bookings/${booking.id}`, { data:{ status:'cancelled' } });
+    // Slot should now appear as available
+    const avail = await page.request.get(`${BASE}/api/availability?date=${slot.date}&stylist_id=${slot.stylist_id}`);
+    const data  = await avail.json();
+    expect(data.slots).toContain(slot.time);
+  });
+
+  test('CT-13: Booking with Any Available barber (null stylist_id) succeeds', async ({ page }) => {
+    const slot = nextSlot();
+    const res = await page.request.post(`${BASE}/api/bookings`, {
+      data: { customer_name:'CT13 AnyBarber', customer_email:`ct13_${Date.now()}@test.com`, service_id:1, appointment_date:slot.date, appointment_time:slot.time }
+    });
+    expect(res.status()).toBe(201);
+    const booking = await res.json();
+    expect(booking.stylist_id).toBeNull();
+  });
+
+  test('CT-14: Booking returns service name and price', async ({ page }) => {
+    const res = await makeBooking(page, { name:'CT14', email:`ct14_${Date.now()}@test.com` });
+    expect(res.status()).toBe(201);
+    const booking = await res.json();
+    expect(booking).toHaveProperty('service_name');
+    expect(booking).toHaveProperty('price_cents');
+    expect(typeof booking.price_cents).toBe('number');
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// CUSTOMER — MOBILE (additional)
+// ════════════════════════════════════════════════════════════════════════════
+
+test.describe('Customer — Mobile Additional', () => {
+  test.use(MOBILE);
+
+  test('CM-05: No horizontal overflow on home page', async ({ page }) => {
+    await page.goto(BASE);
+    await page.waitForLoadState('networkidle');
+    const bodyWidth   = await page.evaluate(() => document.body.scrollWidth);
+    const windowWidth = await page.evaluate(() => window.innerWidth);
+    expect(bodyWidth).toBeLessThanOrEqual(windowWidth + 5);
+  });
+
+  test('CM-06: Hamburger menu button visible on booking page mobile', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    // The burger button should be visible (not hidden by CSS)
+    const burger = page.locator('.nav-burger, .burger-menu, button[aria-label*="menu"], button[class*="burger"], button[class*="hamburger"]').first();
+    await expect(burger).toBeVisible({ timeout: 5000 });
+  });
+
+  test('CM-07: Hamburger menu button visible on home page mobile', async ({ page }) => {
+    await page.goto(BASE);
+    await page.waitForLoadState('networkidle');
+    const burger = page.locator('.nav-burger, .burger-menu, button[aria-label*="menu"], button[class*="burger"], button[class*="hamburger"]').first();
+    await expect(burger).toBeVisible({ timeout: 5000 });
+  });
+
+  test('CM-08: Booking step bar does not overflow on mobile', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    const stepBar = page.locator('.steps-bar');
+    await expect(stepBar).toBeVisible({ timeout: 5000 });
+    const box = await stepBar.boundingBox();
+    const windowWidth = await page.evaluate(() => window.innerWidth);
+    if (box) {
+      expect(box.x + box.width).toBeLessThanOrEqual(windowWidth + 5);
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// BARBER — DESKTOP (additional edge cases)
+// ════════════════════════════════════════════════════════════════════════════
+
+test.describe('Barber — Password Edge Cases', () => {
+  test.use(DESKTOP);
+
+  test('BT-13: Wrong current password returns 401', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'marcus', password:'marcus123' } });
+    const res = await page.request.post(`${BASE}/api/auth/change-password`, {
+      data: { current_password:'wrongpassword', new_password:'newpassword123' }
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test('BT-14: Short new password returns 400 on change-password', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'marcus', password:'marcus123' } });
+    const res = await page.request.post(`${BASE}/api/auth/change-password`, {
+      data: { current_password:'marcus123', new_password:'abc' }
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  test('BT-15: Change password without fields returns 400', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'james', password:'james123' } });
+    const res = await page.request.post(`${BASE}/api/auth/change-password`, { data: {} });
+    expect(res.status()).toBe(400);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// ADMIN — DESKTOP (additional coverage)
+// ════════════════════════════════════════════════════════════════════════════
+
+test.describe('Admin — Additional Coverage', () => {
+  test.use(DESKTOP);
+
+  test('AT-26: Admin can filter bookings by barber (stylist_id)', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.get(`${BASE}/api/admin/bookings?stylist_id=1`);
+    expect(res.status()).toBe(200);
+    const bookings = await res.json();
+    bookings.filter(b => b.stylist_id !== null).forEach(b => expect(b.stylist_id).toBe(1));
+  });
+
+  test('AT-28: date_from filter excludes bookings before the cutoff date', async ({ page }) => {
+    // Create a booking far in the future (2050) so it appears in next query
+    const futureDate = '2050-03-15';
+    await page.request.post(`${BASE}/api/bookings`, {
+      data: { customer_name:'AT28 future', customer_email:`at28f_${Date.now()}@test.com`, service_id:1, appointment_date:futureDate, appointment_time:'09:00' }
+    });
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    // Query with date_from = 2050 — should only return 2050+ bookings
+    const res = await page.request.get(`${BASE}/api/admin/bookings?date_from=${futureDate}`);
+    expect(res.status()).toBe(200);
+    const bookings = await res.json();
+    // Every booking returned must have date >= futureDate
+    bookings.forEach(b => {
+      expect(b.appointment_date >= futureDate).toBe(true);
+    });
+    // The 2050 booking we created should be in the results
+    expect(bookings.some(b => b.appointment_date === futureDate)).toBe(true);
+  });
+
+  test('AT-29: Merge with non-existent keep_email returns 404', async ({ page }) => {
+    const ts = Date.now();
+    const emailB = `at29b_${ts}@test.com`;
+    await makeBooking(page, { name:'AT29b', email:emailB });
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.post(`${BASE}/api/admin/customers/merge`, {
+      data: { keep_email:`nonexistent_${ts}@test.com`, drop_email:emailB }
+    });
+    expect(res.status()).toBe(404);
+  });
+
+  test('AT-30: Merge with non-existent drop_email returns 404', async ({ page }) => {
+    const ts = Date.now();
+    const emailA = `at30a_${ts}@test.com`;
+    await makeBooking(page, { name:'AT30a', email:emailA });
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.post(`${BASE}/api/admin/customers/merge`, {
+      data: { keep_email:emailA, drop_email:`nonexistent_${ts}@test.com` }
+    });
+    expect(res.status()).toBe(404);
+  });
+
+  test('AT-31: Admin can re-activate a deactivated team member', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const username = `react_${Date.now()}`;
+    const addRes = await page.request.post(`${BASE}/api/admin/barbers`, {
+      data: { name:'Reactivate Test', username, password:'react123456', role:'barber' }
+    });
+    const member = await addRes.json();
+    // Deactivate
+    await page.request.patch(`${BASE}/api/admin/barbers/${member.id}`, { data:{ active:false } });
+    // Re-activate
+    const res = await page.request.patch(`${BASE}/api/admin/barbers/${member.id}`, { data:{ active:true } });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).active).toBe(1);
+  });
+
+  test('AT-32: Admin can update team member bio', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    // Update Marcus's bio
+    const team = await (await page.request.get(`${BASE}/api/admin/barbers`)).json();
+    const marcus = team.find(m => m.username === 'marcus');
+    const res = await page.request.patch(`${BASE}/api/admin/barbers/${marcus.id}`, {
+      data: { bio:'Specializes in classic cuts and fades' }
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).bio).toBe('Specializes in classic cuts and fades');
+  });
+
+  test('AT-33: Admin can update customer name', async ({ page }) => {
+    const email = `at33_${Date.now()}@test.com`;
+    await makeBooking(page, { name:'AT33 Old Name', email });
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.patch(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`, {
+      data: { name:'AT33 New Name' }
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).name).toBe('AT33 New Name');
+  });
+
+  test('AT-34: Admin can update customer phone', async ({ page }) => {
+    const email = `at34_${Date.now()}@test.com`;
+    await makeBooking(page, { name:'AT34', email, phone:'6031110000' });
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.patch(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`, {
+      data: { phone:'6039999999' }
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).phone).toBe('6039999999');
+  });
+
+  test('AT-35: Customer not found returns 404', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.get(`${BASE}/api/admin/customers/nobody_${Date.now()}@nowhere.com`);
+    expect(res.status()).toBe(404);
+  });
+
+  test('AT-36: Admin can reset team member password', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const username = `pwreset_${Date.now()}`;
+    const addRes = await page.request.post(`${BASE}/api/admin/barbers`, {
+      data: { name:'PW Reset', username, password:'initial123', role:'barber' }
+    });
+    const member = await addRes.json();
+    const resetRes = await page.request.patch(`${BASE}/api/admin/barbers/${member.id}`, {
+      data: { new_password:'newpass456' }
+    });
+    expect(resetRes.status()).toBe(200);
+    // Verify new password works
+    const loginRes = await page.request.post(`${BASE}/api/auth/login`, { data:{ username, password:'newpass456' } });
+    expect(loginRes.status()).toBe(200);
+  });
+
+  test('AT-37: Admin PATCH barber with short new_password returns 400', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const team = await (await page.request.get(`${BASE}/api/admin/barbers`)).json();
+    const marcus = team.find(m => m.username === 'marcus');
+    const res = await page.request.patch(`${BASE}/api/admin/barbers/${marcus.id}`, {
+      data: { new_password:'abc' }
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  test('AT-38: PATCH booking with nothing to update returns 400', async ({ page }) => {
+    const bookRes = await makeBooking(page, { name:'AT38', email:`at38_${Date.now()}@test.com` });
+    expect(bookRes.status()).toBe(201);
+    const booking = await bookRes.json();
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.patch(`${BASE}/api/admin/bookings/${booking.id}`, { data:{} });
+    expect(res.status()).toBe(400);
+  });
+
+  test('AT-39: PATCH non-existent booking returns 404', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.patch(`${BASE}/api/admin/bookings/9999999`, { data:{ status:'confirmed' } });
+    expect(res.status()).toBe(404);
+  });
+
+  test('AT-40: Admin can filter bookings by date and status combined', async ({ page }) => {
+    const slot = nextSlot();
+    const b = await page.request.post(`${BASE}/api/bookings`, {
+      data: { customer_name:'AT40', customer_email:`at40_${Date.now()}@test.com`, service_id:1, appointment_date:slot.date, appointment_time:slot.time }
+    });
+    expect(b.status()).toBe(201);
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.get(`${BASE}/api/admin/bookings?date=${slot.date}&status=pending`);
+    expect(res.status()).toBe(200);
+    const bookings = await res.json();
+    bookings.forEach(b => {
+      expect(b.appointment_date).toBe(slot.date);
+      expect(b.status).toBe('pending');
+    });
+  });
+
+  test('AT-41: PATCH customer with nothing to update returns 400', async ({ page }) => {
+    const email = `at41_${Date.now()}@test.com`;
+    await makeBooking(page, { name:'AT41', email });
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.patch(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`, { data:{} });
+    expect(res.status()).toBe(400);
+  });
+
+  test('AT-42: Merge missing fields returns 400', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.post(`${BASE}/api/admin/customers/merge`, { data:{ keep_email:'a@test.com' } });
+    expect(res.status()).toBe(400);
+  });
+
+  test('AT-43: PATCH barber not found returns 404', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.patch(`${BASE}/api/admin/barbers/9999999`, { data:{ bio:'test' } });
+    expect(res.status()).toBe(404);
+  });
+
+  test('AT-44: Add barber missing required fields returns 400', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res = await page.request.post(`${BASE}/api/admin/barbers`, { data:{ name:'No Username' } });
+    expect(res.status()).toBe(400);
+  });
+});
