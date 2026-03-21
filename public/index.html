@@ -49,6 +49,9 @@
     .step-tab.done { color: #2d7d4f; }
     .step-tab.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
     .step-num { display: block; font-size: 10px; font-weight: 400; color: inherit; margin-bottom: 2px; }
+    .step-label { display: inline; }
+    @media (max-width: 600px) { .step-tab { padding: 10px 4px; font-size: 11px; } }
+    @media (max-width: 380px) { .step-label { display: none; } .step-tab { padding: 12px 4px; } }
 
     /* Cards */
     .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-bottom: 16px; }
@@ -183,10 +186,10 @@
   <main>
     <!-- Steps -->
     <div class="steps-bar">
-      <div class="step-tab active" id="tab-1"><span class="step-num">Step 1</span>Services</div>
-      <div class="step-tab"        id="tab-2"><span class="step-num">Step 2</span>Barber</div>
-      <div class="step-tab"        id="tab-3"><span class="step-num">Step 3</span>Date &amp; Time</div>
-      <div class="step-tab"        id="tab-4"><span class="step-num">Step 4</span>Confirm</div>
+      <div class="step-tab active" id="tab-1"><span class="step-num">Step 1</span><span class="step-label">Services</span></div>
+      <div class="step-tab"        id="tab-2"><span class="step-num">Step 2</span><span class="step-label">Barber</span></div>
+      <div class="step-tab"        id="tab-3"><span class="step-num">Step 3</span><span class="step-label">Time</span></div>
+      <div class="step-tab"        id="tab-4"><span class="step-num">Step 4</span><span class="step-label">Confirm</span></div>
     </div>
 
     <!-- Step 1: Services -->

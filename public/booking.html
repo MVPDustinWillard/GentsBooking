@@ -123,7 +123,14 @@
     .step-tab.done .step-num { background: #2a7a46; }
     .step-tab.done .step-num::before { content: '✓'; color: #fff; font-size: 10px; }
     .step-label { vertical-align: middle; }
-    @media (max-width: 500px) { .step-tab { font-size: 10px; padding: 12px 4px; } }
+    @media (max-width: 600px) {
+      .step-tab {
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 4px; padding: 10px 4px; font-size: 10px;
+      }
+      .step-num { margin-right: 0; }
+    }
+    @media (max-width: 380px) { .step-label { display: none; } .step-tab { padding: 12px 4px; } }
 
     /* ── CARD ── */
     .card {
@@ -393,7 +400,7 @@
     <div class="steps-bar">
       <div class="step-tab active" id="tab-1"><span class="step-num">1</span><span class="step-label">Services</span></div>
       <div class="step-tab"        id="tab-2"><span class="step-num">2</span><span class="step-label">Barber</span></div>
-      <div class="step-tab"        id="tab-3"><span class="step-num">3</span><span class="step-label">Date &amp; Time</span></div>
+      <div class="step-tab"        id="tab-3"><span class="step-num">3</span><span class="step-label">Time</span></div>
       <div class="step-tab"        id="tab-4"><span class="step-num">4</span><span class="step-label">Confirm</span></div>
     </div>
 
