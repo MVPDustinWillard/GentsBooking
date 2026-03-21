@@ -296,6 +296,14 @@ app.post('/api/bookings', async (req,res) => {
   if (!customer_name||!customer_email||!service_id||!appointment_date||!appointment_time)
     return res.status(400).json({error:'Missing required fields'});
 
+  // Validate service exists
+  if (!db.prepare('SELECT id FROM services WHERE id=? AND active=1').get(service_id))
+    return res.status(400).json({error:'Invalid or inactive service'});
+
+  // Validate stylist exists (if provided)
+  if (stylist_id && !db.prepare('SELECT id FROM stylists WHERE id=? AND active=1').get(stylist_id))
+    return res.status(400).json({error:'Invalid or inactive barber'});
+
   const conflict = db.prepare(
     "SELECT id FROM bookings WHERE stylist_id IS ? AND appointment_date=? AND appointment_time=? AND status!='cancelled'"
   ).get(stylist_id||null, appointment_date, appointment_time);

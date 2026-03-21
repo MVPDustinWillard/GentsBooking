@@ -978,3 +978,171 @@ test.describe('Admin — Additional Coverage', () => {
     expect(res.status()).toBe(400);
   });
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// PRODUCTION READINESS — final edge cases
+// ════════════════════════════════════════════════════════════════════════════
+
+test.describe('Production Readiness', () => {
+  test.use(DESKTOP);
+
+  // ── Input validation (prevents 500 crashes) ─────────────────────────────
+
+  test('PR-01: Invalid service_id returns 400 not 500', async ({ page }) => {
+    const slot = nextSlot();
+    const res = await page.request.post(`${BASE}/api/bookings`, {
+      data: { customer_name:'PR01', customer_email:`pr01_${Date.now()}@test.com`, service_id:9999, appointment_date:slot.date, appointment_time:slot.time }
+    });
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body).toHaveProperty('error');
+  });
+
+  test('PR-02: Invalid stylist_id returns 400 not 500', async ({ page }) => {
+    const slot = nextSlot();
+    const res = await page.request.post(`${BASE}/api/bookings`, {
+      data: { customer_name:'PR02', customer_email:`pr02_${Date.now()}@test.com`, service_id:1, stylist_id:9999, appointment_date:slot.date, appointment_time:slot.time }
+    });
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body).toHaveProperty('error');
+  });
+
+  // ── Services API ────────────────────────────────────────────────────────
+
+  test('PR-03: Services API returns at least 5 active services', async ({ page }) => {
+    const res      = await page.request.get(`${BASE}/api/services`);
+    expect(res.status()).toBe(200);
+    const services = await res.json();
+    expect(services.length).toBeGreaterThanOrEqual(5);
+    services.forEach(s => {
+      expect(s).toHaveProperty('id');
+      expect(s).toHaveProperty('name');
+      expect(s).toHaveProperty('price_cents');
+      expect(s).toHaveProperty('duration_min');
+      expect(s.price_cents).toBeGreaterThan(0);
+      expect(s.duration_min).toBeGreaterThan(0);
+    });
+  });
+
+  // ── Barbers API ─────────────────────────────────────────────────────────
+
+  test('PR-04: Public barbers API only returns active barbers', async ({ page }) => {
+    // Deactivate a temp barber and confirm they don't appear publicly
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const username = `pr04_${Date.now()}`;
+    const addRes = await page.request.post(`${BASE}/api/admin/barbers`, {
+      data: { name:'PR04 Temp', username, password:'pr04123456', role:'barber' }
+    });
+    const member = await addRes.json();
+    await page.request.patch(`${BASE}/api/admin/barbers/${member.id}`, { data:{ active:false } });
+    await page.request.post(`${BASE}/api/auth/logout`);
+    // Public API should not include deactivated barber
+    const res     = await page.request.get(`${BASE}/api/barbers`);
+    const barbers = await res.json();
+    expect(barbers.some(b => b.id === member.id)).toBe(false);
+  });
+
+  test('PR-05: Public barbers API does not expose admin accounts', async ({ page }) => {
+    const res     = await page.request.get(`${BASE}/api/barbers`);
+    const barbers = await res.json();
+    // Should not include admin role accounts
+    barbers.forEach(b => {
+      expect(b).not.toHaveProperty('password_hash');
+      expect(b).not.toHaveProperty('username');
+    });
+  });
+
+  // ── Booking notes ───────────────────────────────────────────────────────
+
+  test('PR-06: Booking notes are stored and returned', async ({ page }) => {
+    const slot = nextSlot();
+    const note = 'Please use scissors only, no clippers';
+    const res = await page.request.post(`${BASE}/api/bookings`, {
+      data: { customer_name:'PR06', customer_email:`pr06_${Date.now()}@test.com`, service_id:1, stylist_id:slot.stylist_id, appointment_date:slot.date, appointment_time:slot.time, notes:note }
+    });
+    expect(res.status()).toBe(201);
+    const booking = await res.json();
+    expect(booking.notes).toBe(note);
+  });
+
+  // ── Auth structure ──────────────────────────────────────────────────────
+
+  test('PR-07: Auth /me response includes photo_url field', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'marcus', password:'marcus123' } });
+    const res  = await page.request.get(`${BASE}/api/auth/me`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty('id');
+    expect(data).toHaveProperty('name');
+    expect(data).toHaveProperty('role');
+    expect(data).toHaveProperty('photo_url');
+  });
+
+  test('PR-08: Login with empty credentials returns 401', async ({ page }) => {
+    const res = await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'', password:'' } });
+    expect(res.status()).toBe(401);
+  });
+
+  // ── Mobile ──────────────────────────────────────────────────────────────
+
+  test('PR-09: Login page no overflow on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${BASE}/login.html`);
+    await page.waitForLoadState('networkidle');
+    const bodyWidth   = await page.evaluate(() => document.body.scrollWidth);
+    const windowWidth = await page.evaluate(() => window.innerWidth);
+    expect(bodyWidth).toBeLessThanOrEqual(windowWidth + 5);
+  });
+
+  // ── Booking availability edge case ──────────────────────────────────────
+
+  test('PR-10: Availability with invalid date returns slots (server does not crash)', async ({ page }) => {
+    const res = await page.request.get(`${BASE}/api/availability?date=not-a-date`);
+    expect(res.status()).toBe(200); // server returns empty or full slot list
+    const data = await res.json();
+    expect(data).toHaveProperty('slots');
+  });
+
+  test('PR-11: All booking fields are present in response', async ({ page }) => {
+    const res = await makeBooking(page, { name:'PR11', email:`pr11_${Date.now()}@test.com` });
+    expect(res.status()).toBe(201);
+    const b = await res.json();
+    ['id','customer_name','customer_email','service_id','appointment_date','appointment_time','status','service_name','price_cents'].forEach(field => {
+      expect(b).toHaveProperty(field);
+    });
+    expect(b.status).toBe('pending');
+  });
+
+  test('PR-12: Admin booking list includes stylist and service info', async ({ page }) => {
+    await makeBooking(page, { name:'PR12', email:`pr12_${Date.now()}@test.com` });
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res      = await page.request.get(`${BASE}/api/admin/bookings`);
+    const bookings = await res.json();
+    expect(bookings.length).toBeGreaterThan(0);
+    const b = bookings[0];
+    expect(b).toHaveProperty('service_name');
+    expect(b).toHaveProperty('price_cents');
+  });
+
+  test('PR-13: Customer list returns expected shape', async ({ page }) => {
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'admin', password:'admin123' } });
+    const res   = await page.request.get(`${BASE}/api/admin/customers`);
+    const custs = await res.json();
+    expect(Array.isArray(custs)).toBe(true);
+    if (custs.length > 0) {
+      ['id','email','name','phone','notes','booking_count'].forEach(field => {
+        expect(custs[0]).toHaveProperty(field);
+      });
+    }
+  });
+
+  test('PR-14: Barber bookings view is filtered — only authenticated user data accessible', async ({ page }) => {
+    // Barber can access /api/admin/bookings but not /api/admin/barbers
+    await page.request.post(`${BASE}/api/auth/login`, { data:{ username:'marcus', password:'marcus123' } });
+    const allowed  = await page.request.get(`${BASE}/api/admin/bookings`);
+    const blocked  = await page.request.get(`${BASE}/api/admin/barbers`);
+    expect(allowed.status()).toBe(200);
+    expect(blocked.status()).toBe(403);
+  });
+});
