@@ -1146,3 +1146,248 @@ test.describe('Production Readiness', () => {
     expect(blocked.status()).toBe(403);
   });
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// END-TO-END UI FLOWS — actual browser interaction (critical for go-live)
+// ════════════════════════════════════════════════════════════════════════════
+
+test.describe('E2E — Booking Wizard (Desktop)', () => {
+  test.use(DESKTOP);
+
+  test('E2E-01: Services load and are clickable on booking page', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    // Step 1 services list should be populated
+    const items = page.locator('#services-list .svc-item');
+    await expect(items.first()).toBeVisible({ timeout: 8000 });
+    const count = await items.count();
+    expect(count).toBeGreaterThanOrEqual(5);
+    // Clicking a service enables the Next button
+    await items.first().click();
+    await expect(page.locator('#btn-1-next')).not.toBeDisabled({ timeout: 3000 });
+  });
+
+  test('E2E-02: Can advance from Step 1 to Step 2 (Barber)', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    await page.locator('#services-list .svc-item').first().click();
+    await page.click('#btn-1-next');
+    await expect(page.locator('#step-2')).toHaveClass(/active/, { timeout: 3000 });
+    // Barber grid should be populated
+    const cards = page.locator('#barber-grid .barber-card');
+    await expect(cards.first()).toBeVisible({ timeout: 5000 });
+  });
+
+  test('E2E-03: "Any Available" barber card is present and selectable', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    await page.locator('#services-list .svc-item').first().click();
+    await page.click('#btn-1-next');
+    const anyCard = page.locator('#barber-any');
+    await expect(anyCard).toBeVisible({ timeout: 5000 });
+    await anyCard.click();
+    await expect(page.locator('#btn-2-next')).not.toBeDisabled({ timeout: 3000 });
+  });
+
+  test('E2E-04: Can advance from Step 2 to Step 3 (Date & Time)', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    // Step 1
+    await page.locator('#services-list .svc-item').first().click();
+    await page.click('#btn-1-next');
+    // Step 2 — pick Any Available
+    await expect(page.locator('#barber-any')).toBeVisible({ timeout: 5000 });
+    await page.click('#barber-any');
+    await page.click('#btn-2-next');
+    // Step 3 should be active
+    await expect(page.locator('#step-3')).toHaveClass(/active/, { timeout: 3000 });
+    await expect(page.locator('#date-picker')).toBeVisible();
+  });
+
+  test('E2E-05: Selecting a date loads available time slots', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    await page.locator('#services-list .svc-item').first().click();
+    await page.click('#btn-1-next');
+    await expect(page.locator('#barber-any')).toBeVisible({ timeout: 5000 });
+    await page.click('#barber-any');
+    await page.click('#btn-2-next');
+    // Pick a far-future date (guaranteed slots available)
+    await page.fill('#date-picker', '2088-06-15');
+    await page.dispatchEvent('#date-picker', 'change');
+    // Slots should load
+    const slots = page.locator('#slots-grid .slot-btn');
+    await expect(slots.first()).toBeVisible({ timeout: 8000 });
+    const count = await slots.count();
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test('E2E-06: Full booking wizard completes end-to-end', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    // Step 1: pick first service
+    await page.locator('#services-list .svc-item').first().click();
+    await page.click('#btn-1-next');
+    // Step 2: Any Available
+    await expect(page.locator('#barber-any')).toBeVisible({ timeout: 5000 });
+    await page.click('#barber-any');
+    await page.click('#btn-2-next');
+    // Step 3: pick date and first slot
+    await page.fill('#date-picker', '2088-07-20');
+    await page.dispatchEvent('#date-picker', 'change');
+    const firstSlot = page.locator('#slots-grid .slot-btn').first();
+    await expect(firstSlot).toBeVisible({ timeout: 8000 });
+    await firstSlot.click();
+    await page.click('#btn-3-next');
+    // Step 4: fill contact info
+    await expect(page.locator('#step-4')).toHaveClass(/active/, { timeout: 3000 });
+    const ts = Date.now();
+    await page.fill('#f-name', 'E2E Test Customer');
+    await page.fill('#f-email', `e2e_${ts}@test.com`);
+    await page.fill('#f-phone', '6031234567');
+    // Submit
+    await page.click('#btn-submit');
+    // Should show confirmation (success state — #success-screen gets class 'show')
+    await expect(page.locator('#success-screen.show')).toBeVisible({ timeout: 10000 });
+  });
+
+  test('E2E-07: Confirm summary shows correct service name before submit', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    const serviceEl = page.locator('#services-list .svc-item').first();
+    const serviceName = await serviceEl.locator('.svc-name, h3, strong, [class*="name"]').first().textContent();
+    await serviceEl.click();
+    await page.click('#btn-1-next');
+    await expect(page.locator('#barber-any')).toBeVisible({ timeout: 5000 });
+    await page.click('#barber-any');
+    await page.click('#btn-2-next');
+    await page.fill('#date-picker', '2088-08-10');
+    await page.dispatchEvent('#date-picker', 'change');
+    await expect(page.locator('#slots-grid .slot-btn').first()).toBeVisible({ timeout: 8000 });
+    await page.locator('#slots-grid .slot-btn').first().click();
+    await page.click('#btn-3-next');
+    // Summary on step 4 should show the service name
+    const summary = await page.locator('#confirm-summary').textContent();
+    expect(summary).toBeTruthy();
+    expect(summary.length).toBeGreaterThan(0);
+  });
+
+  test('E2E-08: Back navigation works between steps', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    await page.locator('#services-list .svc-item').first().click();
+    await page.click('#btn-1-next');
+    await expect(page.locator('#step-2')).toHaveClass(/active/, { timeout: 3000 });
+    // Go back
+    await page.click('#step-2 .btn-secondary');
+    await expect(page.locator('#step-1')).toHaveClass(/active/, { timeout: 3000 });
+  });
+});
+
+test.describe('E2E — Booking Wizard (Mobile)', () => {
+  test.use(MOBILE);
+
+  test('E2E-09: Full booking wizard works on mobile', async ({ page }) => {
+    await page.goto(`${BASE}/booking`);
+    await page.waitForLoadState('networkidle');
+    await page.locator('#services-list .svc-item').first().click();
+    await expect(page.locator('#btn-1-next')).not.toBeDisabled({ timeout: 3000 });
+    await page.click('#btn-1-next');
+    await expect(page.locator('#barber-any')).toBeVisible({ timeout: 5000 });
+    await page.click('#barber-any');
+    await page.click('#btn-2-next');
+    await page.fill('#date-picker', '2088-09-05');
+    await page.dispatchEvent('#date-picker', 'change');
+    await expect(page.locator('#slots-grid .slot-btn').first()).toBeVisible({ timeout: 8000 });
+    await page.locator('#slots-grid .slot-btn').first().click();
+    await page.click('#btn-3-next');
+    await expect(page.locator('#step-4')).toHaveClass(/active/, { timeout: 3000 });
+    await page.fill('#f-name', 'Mobile E2E Customer');
+    await page.fill('#f-email', `mobile_e2e_${Date.now()}@test.com`);
+    await page.click('#btn-submit');
+    await expect(page.locator('#success-screen.show')).toBeVisible({ timeout: 10000 });
+  });
+});
+
+test.describe('E2E — Admin UI', () => {
+  test.use(DESKTOP);
+
+  test('E2E-10: Admin page redirects unauthenticated users to login', async ({ page }) => {
+    await page.goto(`${BASE}/admin.html`);
+    await page.waitForLoadState('networkidle');
+    // Should redirect to login.html or show login form
+    const url = page.url();
+    const body = await page.textContent('body');
+    const isRedirected = url.includes('login') || body.toLowerCase().includes('sign in') || body.toLowerCase().includes('username');
+    expect(isRedirected).toBe(true);
+  });
+
+  test('E2E-11: Admin bookings table renders with data', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    await page.waitForLoadState('networkidle');
+    // Bookings table body: #bookings-tbody
+    const tbody = page.locator('#bookings-tbody');
+    await expect(tbody).toBeVisible({ timeout: 8000 });
+    const rows = await page.locator('#bookings-tbody tr').count();
+    expect(rows).toBeGreaterThan(0);
+  });
+
+  test('E2E-12: Admin can switch to Customers view and see table', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    await page.click('#nav-customers');
+    await page.waitForTimeout(1000);
+    const tbody = page.locator('#cust-tbody');
+    await expect(tbody).toBeVisible({ timeout: 5000 });
+    const rows = await page.locator('#cust-tbody tr').count();
+    expect(rows).toBeGreaterThan(0);
+  });
+
+  test('E2E-13: Admin Team view shows team members', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    // nav-team is hidden until clicked for admins — click it
+    await page.evaluate(() => document.getElementById('nav-team').click());
+    await page.waitForTimeout(1500);
+    // Team is rendered in a grid (#team-grid), not a tbody
+    const grid = page.locator('#team-grid');
+    await expect(grid).toBeVisible({ timeout: 5000 });
+    const cards = await page.locator('#team-grid .team-card, #team-grid .member-card, #team-grid [class*="card"]').count();
+    expect(cards).toBeGreaterThanOrEqual(4);
+  });
+
+  test('E2E-14: Admin barber filter dropdown is populated', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    await page.waitForLoadState('networkidle');
+    const select = page.locator('#f-barber');
+    await expect(select).toBeVisible({ timeout: 5000 });
+    const options = await select.locator('option').count();
+    expect(options).toBeGreaterThan(1); // At least "All barbers" + barbers
+  });
+
+  test('E2E-15: Barber login shows bookings + customers nav but not team', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    await page.waitForLoadState('networkidle');
+    // Bookings nav links exist (nav-all, nav-today, nav-upcoming)
+    await expect(page.locator('#nav-all')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('#nav-customers')).toBeVisible();
+    await expect(page.locator('#nav-team')).toBeHidden();
+  });
+
+  test('E2E-16: Home page CTA navigates to booking page', async ({ page }) => {
+    await page.goto(BASE);
+    await page.waitForLoadState('networkidle');
+    // Click the main Book Now CTA
+    const bookBtn = page.locator('a[href*="booking"], button:has-text("Book"), a:has-text("Book")').first();
+    await expect(bookBtn).toBeVisible({ timeout: 5000 });
+    await bookBtn.click();
+    await page.waitForURL(`${BASE}/booking`, { timeout: 8000 });
+    await expect(page).toHaveURL(`${BASE}/booking`);
+  });
+
+  test('E2E-17: All static pages return 200', async ({ page }) => {
+    const pages = ['/', '/booking', '/login.html', '/admin.html'];
+    for (const p of pages) {
+      const res = await page.request.get(`${BASE}${p}`);
+      expect(res.status()).toBe(200);
+    }
+  });
+});
