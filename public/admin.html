@@ -35,7 +35,7 @@
     .topbar{background:#fff;border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .topbar-title{font-size:20px;font-weight:700}
     .topbar-date{font-size:13px;color:#888}
-    .content{padding:24px 28px;flex:1}
+    .content{padding:24px 28px;flex:1;overflow-x:auto}
 
     /* ── Views ── */
     .view{display:none}
@@ -140,7 +140,7 @@
     .alert-success{background:#f0faf4;color:#1a7a4a;border:1px solid #b0d8c0}
     .hint{font-size:12px;color:#999;margin-top:3px}
 
-    @media(max-width:700px){.sidebar{display:none}.main{margin-left:0}}
+    @media(max-width:700px){.sidebar{display:none}.main{margin-left:0;overflow-x:hidden}}
     .spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:5px}
     @keyframes spin{to{transform:rotate(360deg)}}
   </style>
@@ -438,7 +438,7 @@
 
 <script>
 let me = null;
-let allStylists = [];
+let allBarbers = [];
 let currentStatus = '';
 
 // ── Init ──────────────────────────────────────────────────
@@ -456,8 +456,8 @@ async function init() {
     document.getElementById('f-barber').style.display = '';
     document.getElementById('nav-team').style.display = '';
     document.getElementById('nav-team-section').style.display = '';
-    const barbers = await fetch('/api/admin/stylists').then(r=>r.json());
-    allStylists = barbers;
+    const barbers = await fetch('/api/admin/barbers').then(r=>r.json());
+    allBarbers = barbers;
     const sel = document.getElementById('f-barber');
     barbers.filter(s=>s.role==='barber'||s.role==='stylist').forEach(s => {
       const o = document.createElement('option');
@@ -540,7 +540,7 @@ function renderBookings(bookings) {
 }
 
 function renderAssign(b) {
-  const opts = allStylists.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active)
+  const opts = allBarbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active)
     .map(s=>`<option value="${s.id}" ${b.stylist_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
   return `<select class="assign-select" onchange="assignBarber(${b.id},this.value)">
     <option value="" ${!b.stylist_id?'selected':''}>Unassigned</option>${opts}
@@ -573,8 +573,8 @@ async function assignBarber(bookingId, stylistId) {
 
 // ── Team Management ───────────────────────────────────────
 async function loadTeam() {
-  const members = await fetch('/api/admin/stylists').then(r=>r.json());
-  allStylists = members;
+  const members = await fetch('/api/admin/barbers').then(r=>r.json());
+  allBarbers = members;
   const grid = document.getElementById('team-grid');
   if (!members.length) { grid.innerHTML='<div style="color:#888;font-size:14px">No team members yet.</div>'; return; }
   const fallback = ['💈','✂','🪒','👤'];
@@ -609,7 +609,7 @@ async function uploadMemberPhoto(id, input) {
   const file = input.files[0]; if (!file) return;
   const fd = new FormData(); fd.append('photo', file);
   try {
-    const res  = await fetch(`/api/admin/stylists/${id}/photo`, { method:'POST', body:fd });
+    const res  = await fetch(`/api/admin/barbers/${id}/photo`, { method:'POST', body:fd });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     showTeamOk('Photo updated.');
@@ -640,7 +640,7 @@ async function addMember() {
   const btn=document.getElementById('btn-add-save');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Adding...';
   try{
-    const res=await fetch('/api/admin/stylists',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,username,password,bio,role})});
+    const res=await fetch('/api/admin/barbers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,username,password,bio,role})});
     const data=await res.json();
     if(!res.ok)throw new Error(data.error);
     closeModal('add-modal');
@@ -651,7 +651,7 @@ async function addMember() {
 }
 
 function openEditModal(id) {
-  const m = allStylists.find(s=>s.id===id);
+  const m = allBarbers.find(s=>s.id===id);
   if(!m)return;
   document.getElementById('edit-id').value=id;
   document.getElementById('edit-name').value=m.name;
@@ -673,7 +673,7 @@ async function saveEdit() {
   const btn=document.getElementById('btn-edit-save');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Saving...';
   try{
-    const res=await fetch(`/api/admin/stylists/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,bio,role})});
+    const res=await fetch(`/api/admin/barbers/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,bio,role})});
     const data=await res.json();
     if(!res.ok)throw new Error(data.error);
     closeModal('edit-modal');
@@ -684,7 +684,7 @@ async function saveEdit() {
 }
 
 function openPwModal(id) {
-  const m=allStylists.find(s=>s.id===id);
+  const m=allBarbers.find(s=>s.id===id);
   document.getElementById('pw-id').value=id;
   document.getElementById('pw-username').textContent=m?m.name:'this user';
   document.getElementById('pw-new').value='';
@@ -706,7 +706,7 @@ async function savePassword() {
   const btn=document.getElementById('btn-pw-save');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Saving...';
   try{
-    const res=await fetch(`/api/admin/stylists/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({new_password:p1})});
+    const res=await fetch(`/api/admin/barbers/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({new_password:p1})});
     const data=await res.json();
     if(!res.ok)throw new Error(data.error);
     okEl.textContent='Password updated successfully.';okEl.classList.add('show');
@@ -717,7 +717,7 @@ async function savePassword() {
 }
 
 async function toggleActive(id, active) {
-  await fetch(`/api/admin/stylists/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active})});
+  await fetch(`/api/admin/barbers/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active})});
   showTeamOk(active?'Account reactivated.':'Account deactivated.');
   loadTeam();
 }

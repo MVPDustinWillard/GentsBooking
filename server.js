@@ -230,7 +230,7 @@ const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    const id  = req.params.id || req.session.stylistId;
+    const id  = req.params.id || req.session.barberId;
     cb(null, `${Date.now()}-${id}${ext}`);
   },
 });
@@ -268,9 +268,9 @@ app.use(session({
   cookie: { maxAge: 8*60*60*1000 }
 }));
 
-const requireAuth  = (req,res,next) => req.session.stylistId ? next() : res.status(401).json({error:'Not authenticated'});
+const requireAuth  = (req,res,next) => req.session.barberId ? next() : res.status(401).json({error:'Not authenticated'});
 const requireAdmin = (req,res,next) => {
-  if (!req.session.stylistId) return res.status(401).json({error:'Not authenticated'});
+  if (!req.session.barberId) return res.status(401).json({error:'Not authenticated'});
   if (req.session.role !== 'admin') return res.status(403).json({error:'Admins only'});
   next();
 };
@@ -278,7 +278,7 @@ const requireAdmin = (req,res,next) => {
 // ── Public API ─────────────────────────────────────────────────────────────
 app.get('/api/services', (_req,res) => res.json(db.prepare('SELECT * FROM services WHERE active=1').all()));
 
-app.get('/api/stylists', (_req,res) =>
+app.get('/api/barbers', (_req,res) =>
   res.json(db.prepare("SELECT id,name,bio,photo_url FROM stylists WHERE active=1 AND role IN ('barber','stylist')").all()));
 
 app.get('/api/availability', (req,res) => {
@@ -335,8 +335,8 @@ app.post('/api/auth/login', (req,res) => {
   const s = db.prepare('SELECT * FROM stylists WHERE username=? AND active=1').get(username);
   if (!s||!bcrypt.compareSync(password, s.password_hash))
     return res.status(401).json({error:'Invalid username or password'});
-  req.session.stylistId   = s.id;
-  req.session.stylistName = s.name;
+  req.session.barberId   = s.id;
+  req.session.barberName = s.name;
   req.session.role        = s.role;
   res.json({id:s.id, name:s.name, role:s.role});
 });
@@ -344,22 +344,22 @@ app.post('/api/auth/login', (req,res) => {
 app.post('/api/auth/logout', (req,res) => { req.session.destroy(); res.json({ok:true}); });
 
 app.get('/api/auth/me', (req,res) => {
-  if (!req.session.stylistId) return res.status(401).json({error:'Not authenticated'});
-  const s = db.prepare('SELECT photo_url FROM stylists WHERE id=?').get(req.session.stylistId);
-  res.json({id:req.session.stylistId, name:req.session.stylistName, role:req.session.role, photo_url:s?.photo_url||''});
+  if (!req.session.barberId) return res.status(401).json({error:'Not authenticated'});
+  const s = db.prepare('SELECT photo_url FROM stylists WHERE id=?').get(req.session.barberId);
+  res.json({id:req.session.barberId, name:req.session.barberName, role:req.session.role, photo_url:s?.photo_url||''});
 });
 
 // Upload own photo
 app.post('/api/auth/upload-photo', requireAuth, upload.single('photo'), (req,res) => {
   if (!req.file) return res.status(400).json({error:'No file uploaded'});
   // Delete old photo if exists
-  const old = db.prepare('SELECT photo_url FROM stylists WHERE id=?').get(req.session.stylistId);
+  const old = db.prepare('SELECT photo_url FROM stylists WHERE id=?').get(req.session.barberId);
   if (old?.photo_url) {
     const oldPath = path.join(__dirname, 'public', old.photo_url);
     if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
   }
   const photo_url = `/uploads/${req.file.filename}`;
-  db.prepare('UPDATE stylists SET photo_url=? WHERE id=?').run(photo_url, req.session.stylistId);
+  db.prepare('UPDATE stylists SET photo_url=? WHERE id=?').run(photo_url, req.session.barberId);
   res.json({photo_url});
 });
 
@@ -368,10 +368,10 @@ app.post('/api/auth/change-password', requireAuth, (req,res) => {
   const { current_password, new_password } = req.body;
   if (!current_password||!new_password) return res.status(400).json({error:'Both fields required'});
   if (new_password.length < 6) return res.status(400).json({error:'New password must be at least 6 characters'});
-  const s = db.prepare('SELECT * FROM stylists WHERE id=?').get(req.session.stylistId);
+  const s = db.prepare('SELECT * FROM stylists WHERE id=?').get(req.session.barberId);
   if (!bcrypt.compareSync(current_password, s.password_hash))
     return res.status(401).json({error:'Current password is incorrect'});
-  db.prepare('UPDATE stylists SET password_hash=? WHERE id=?').run(bcrypt.hashSync(new_password,10), req.session.stylistId);
+  db.prepare('UPDATE stylists SET password_hash=? WHERE id=?').run(bcrypt.hashSync(new_password,10), req.session.barberId);
   res.json({ok:true});
 });
 
@@ -396,6 +396,13 @@ app.patch('/api/admin/bookings/:id', requireAdmin, (req,res) => {
   const b = db.prepare('SELECT * FROM bookings WHERE id=?').get(req.params.id);
   if (!b) return res.status(404).json({error:'Booking not found'});
   const { status, notes, stylist_id } = req.body;
+  // Prevent assigning a barber to a slot they're already booked in
+  if (stylist_id !== undefined && stylist_id) {
+    const conflict = db.prepare(
+      "SELECT id FROM bookings WHERE stylist_id=? AND appointment_date=? AND appointment_time=? AND status!='cancelled' AND id!=?"
+    ).get(stylist_id, b.appointment_date, b.appointment_time, b.id);
+    if (conflict) return res.status(409).json({error:'That barber is already booked at this time'});
+  }
   const updates=[]; const p=[];
   if (status!==undefined)     { updates.push('status=?');     p.push(status); }
   if (notes!==undefined)      { updates.push('notes=?');      p.push(notes); }
@@ -406,12 +413,12 @@ app.patch('/api/admin/bookings/:id', requireAdmin, (req,res) => {
   res.json(db.prepare('SELECT * FROM bookings WHERE id=?').get(req.params.id));
 });
 
-// ── Admin: Stylists (account management) ──────────────────────────────────
-app.get('/api/admin/stylists', requireAdmin, (_req,res) =>
+// ── Admin: Barbers (account management) ───────────────────────────────────
+app.get('/api/admin/barbers', requireAdmin, (_req,res) =>
   res.json(db.prepare("SELECT id,name,username,bio,role,active,photo_url FROM stylists ORDER BY role DESC, name ASC").all()));
 
 // Admin upload photo for any member
-app.post('/api/admin/stylists/:id/photo', requireAdmin, upload.single('photo'), (req,res) => {
+app.post('/api/admin/barbers/:id/photo', requireAdmin, upload.single('photo'), (req,res) => {
   if (!req.file) return res.status(400).json({error:'No file uploaded'});
   const member = db.prepare('SELECT * FROM stylists WHERE id=?').get(req.params.id);
   if (!member) return res.status(404).json({error:'Not found'});
@@ -424,7 +431,7 @@ app.post('/api/admin/stylists/:id/photo', requireAdmin, upload.single('photo'), 
   res.json({photo_url});
 });
 
-app.post('/api/admin/stylists', requireAdmin, (req,res) => {
+app.post('/api/admin/barbers', requireAdmin, (req,res) => {
   const { name, username, password, bio, role } = req.body;
   if (!name||!username||!password) return res.status(400).json({error:'name, username and password are required'});
   if (password.length < 6) return res.status(400).json({error:'Password must be at least 6 characters'});
@@ -435,7 +442,7 @@ app.post('/api/admin/stylists', requireAdmin, (req,res) => {
   res.status(201).json(db.prepare('SELECT id,name,username,bio,role,active FROM stylists WHERE id=?').get(r.lastInsertRowid));
 });
 
-app.patch('/api/admin/stylists/:id', requireAdmin, (req,res) => {
+app.patch('/api/admin/barbers/:id', requireAdmin, (req,res) => {
   const { name, bio, role, active, new_password } = req.body;
   const s = db.prepare('SELECT * FROM stylists WHERE id=?').get(req.params.id);
   if (!s) return res.status(404).json({error:'Not found'});

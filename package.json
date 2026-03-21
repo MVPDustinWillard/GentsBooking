@@ -20,5 +20,8 @@
     "nodemailer": "^8.0.3",
     "playwright": "^1.58.2",
     "twilio": "^5.13.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
   }
 }

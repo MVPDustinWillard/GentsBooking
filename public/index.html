@@ -74,14 +74,14 @@
     .svc-price { font-size: 14px; font-weight: 700; }
 
     /* Stylist grid */
-    .stylist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 16px 20px 20px; }
-    .stylist-card { border: 2px solid var(--border); border-radius: 10px; padding: 16px 12px; text-align: center; cursor: pointer; transition: all .15s; }
-    .stylist-card:hover { border-color: #bbb; }
-    .stylist-card.selected { border-color: var(--accent); background: var(--accent-light); }
-    .stylist-avatar { width: 52px; height: 52px; border-radius: 50%; background: #ddd; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; }
-    .stylist-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .stylist-name { font-size: 13px; font-weight: 700; }
-    .stylist-bio { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .barber-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 16px 20px 20px; }
+    .barber-card { border: 2px solid var(--border); border-radius: 10px; padding: 16px 12px; text-align: center; cursor: pointer; transition: all .15s; }
+    .barber-card:hover { border-color: #bbb; }
+    .barber-card.selected { border-color: var(--accent); background: var(--accent-light); }
+    .barber-avatar { width: 52px; height: 52px; border-radius: 50%; background: #ddd; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; }
+    .barber-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .barber-name { font-size: 13px; font-weight: 700; }
+    .barber-bio { font-size: 11px; color: var(--muted); margin-top: 3px; }
 
     /* Date + slots */
     .date-row { padding: 16px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f0f0f0; }
@@ -212,7 +212,7 @@
           <div class="card-title">Choose Your Barber</div>
           <div class="card-sub">Select a barber or choose "Any Available"</div>
         </div>
-        <div class="stylist-grid" id="stylist-grid">
+        <div class="barber-grid" id="barber-grid">
           <!-- Populated by JS -->
         </div>
         <div class="nav-row">
@@ -325,9 +325,9 @@
 // ── State ──────────────────────────────────────────────────
 const state = {
   services: [],
-  stylists: [],
+  barbers: [],
   selectedService: null,  // { id, name, price_cents, duration_min }
-  selectedStylist: null,  // { id, name } or { id: null, name: 'Any Available' }
+  selectedBarber: null,   // { id, name } or { id: null, name: 'Any Available' }
   selectedDate: null,
   selectedTime: null,
 };
@@ -346,14 +346,14 @@ const fmtDate = d => {
 
 // ── Init ──────────────────────────────────────────────────
 async function init() {
-  const [services, stylists] = await Promise.all([
+  const [services, barbers] = await Promise.all([
     fetch('/api/services').then(r => r.json()),
-    fetch('/api/stylists').then(r => r.json()),
+    fetch('/api/barbers').then(r => r.json()),
   ]);
   state.services = services;
-  state.stylists = stylists;
+  state.barbers = barbers;
   renderServices();
-  renderStylists();
+  renderBarbers();
   // Set min date to today
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('date-picker').min = today;
@@ -397,31 +397,31 @@ function selectService(id) {
   updateSidebar();
 }
 
-// ── Step 2: Stylists ──────────────────────────────────────
-function renderStylists() {
-  const grid = document.getElementById('stylist-grid');
+// ── Step 2: Barbers ───────────────────────────────────────
+function renderBarbers() {
+  const grid = document.getElementById('barber-grid');
   const avatars = ['💈','✂','🪒','💈'];
   const anyCard = `
-    <div class="stylist-card" id="stylist-any" onclick="selectStylist(null)">
-      <div class="stylist-avatar">👥</div>
-      <div class="stylist-name">Any Available</div>
-      <div class="stylist-bio">First available barber</div>
+    <div class="barber-card" id="barber-any" onclick="selectBarber(null)">
+      <div class="barber-avatar">👥</div>
+      <div class="barber-name">Any Available</div>
+      <div class="barber-bio">First available barber</div>
     </div>`;
-  const cards = state.stylists.map((s, i) => `
-    <div class="stylist-card" id="stylist-${s.id}" onclick="selectStylist(${s.id})">
-      <div class="stylist-avatar">${s.photo_url ? `<img src="${s.photo_url}" alt="${escHtml(s.name)}">` : avatars[i % avatars.length]}</div>
-      <div class="stylist-name">${escHtml(s.name)}</div>
-      <div class="stylist-bio">${escHtml(s.bio || 'Professional barber')}</div>
+  const cards = state.barbers.map((s, i) => `
+    <div class="barber-card" id="barber-${s.id}" onclick="selectBarber(${s.id})">
+      <div class="barber-avatar">${s.photo_url ? `<img src="${s.photo_url}" alt="${escHtml(s.name)}">` : avatars[i % avatars.length]}</div>
+      <div class="barber-name">${escHtml(s.name)}</div>
+      <div class="barber-bio">${escHtml(s.bio || 'Professional barber')}</div>
     </div>`).join('');
   grid.innerHTML = anyCard + cards;
 }
 
-function selectStylist(id) {
-  state.selectedStylist = id === null
+function selectBarber(id) {
+  state.selectedBarber = id === null
     ? { id: null, name: 'Any Available' }
-    : state.stylists.find(s => s.id === id);
-  document.querySelectorAll('.stylist-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById(id === null ? 'stylist-any' : `stylist-${id}`).classList.add('selected');
+    : state.barbers.find(s => s.id === id);
+  document.querySelectorAll('.barber-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(id === null ? 'barber-any' : `barber-${id}`).classList.add('selected');
   document.getElementById('btn-2-next').disabled = false;
   updateSidebar();
 }
@@ -434,8 +434,8 @@ async function loadSlots() {
   state.selectedTime = null;
   document.getElementById('btn-3-next').disabled = true;
 
-  const stylistId = state.selectedStylist?.id;
-  const url = `/api/availability?date=${date}${stylistId ? `&stylist_id=${stylistId}` : ''}`;
+  const barberId = state.selectedBarber?.id;
+  const url = `/api/availability?date=${date}${barberId ? `&stylist_id=${barberId}` : ''}`;
   const { slots } = await fetch(url).then(r => r.json());
 
   const grid = document.getElementById('slots-grid');
@@ -461,7 +461,7 @@ function renderConfirmSummary() {
   const s = state;
   document.getElementById('confirm-summary').innerHTML = `
     <div class="confirm-row"><span class="confirm-label">Service</span><span class="confirm-val">${escHtml(s.selectedService?.name || '—')}</span></div>
-    <div class="confirm-row"><span class="confirm-label">Barber</span><span class="confirm-val">${escHtml(s.selectedStylist?.name || '—')}</span></div>
+    <div class="confirm-row"><span class="confirm-label">Barber</span><span class="confirm-val">${escHtml(s.selectedBarber?.name || '—')}</span></div>
     <div class="confirm-row"><span class="confirm-label">Date</span><span class="confirm-val">${s.selectedDate ? fmtDate(s.selectedDate) : '—'}</span></div>
     <div class="confirm-row"><span class="confirm-label">Time</span><span class="confirm-val">${s.selectedTime ? fmtTime(s.selectedTime) : '—'}</span></div>
     <div class="confirm-row"><span class="confirm-label">Price</span><span class="confirm-val">${s.selectedService ? fmt(s.selectedService.price_cents) : '—'}</span></div>
@@ -497,7 +497,7 @@ async function submitBooking() {
         customer_name: name,
         customer_email: email,
         customer_phone: phone,
-        stylist_id: state.selectedStylist?.id || null,
+        stylist_id: state.selectedBarber?.id || null,
         service_id: state.selectedService.id,
         appointment_date: state.selectedDate,
         appointment_time: state.selectedTime,
@@ -583,8 +583,8 @@ function updateSidebar() {
     html += `<div class="sidebar-item"><span class="sidebar-item-name">${escHtml(s.selectedService.name)}</span><span class="sidebar-item-price">${fmt(s.selectedService.price_cents)}</span></div>`;
     html += `<div class="sidebar-item"><span style="color:var(--muted);font-size:12px">${s.selectedService.duration_min} min</span></div>`;
   }
-  if (s.selectedStylist) {
-    html += `<hr class="sidebar-divider"><div class="sidebar-item"><span class="sidebar-item-name" style="color:var(--muted)">Barber</span><span class="sidebar-item-price">${escHtml(s.selectedStylist.name)}</span></div>`;
+  if (s.selectedBarber) {
+    html += `<hr class="sidebar-divider"><div class="sidebar-item"><span class="sidebar-item-name" style="color:var(--muted)">Barber</span><span class="sidebar-item-price">${escHtml(s.selectedBarber.name)}</span></div>`;
   }
   if (s.selectedDate && s.selectedTime) {
     html += `<div class="sidebar-item"><span class="sidebar-item-name" style="color:var(--muted)">Date</span><span class="sidebar-item-price" style="font-size:12px">${fmtDate(s.selectedDate)}</span></div>`;
