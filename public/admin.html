@@ -440,6 +440,12 @@
 let me = null;
 let allBarbers = [];
 let currentStatus = '';
+let currentView   = 'bookings';
+
+function localDateStr() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+}
 
 // ── Init ──────────────────────────────────────────────────
 async function init() {
@@ -469,6 +475,7 @@ async function init() {
 
 // ── Views ──────────────────────────────────────────────────
 function showView(view, title, el) {
+  currentView = view;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
   document.getElementById(`view-${view}`).classList.add('active');
@@ -476,10 +483,8 @@ function showView(view, title, el) {
   document.getElementById('view-title').textContent = title;
   const dateEl = document.getElementById('f-date');
   if (view === 'today') {
-    dateEl.value = new Date().toISOString().split('T')[0];
-  } else if (view === 'upcoming') {
-    dateEl.value = '';
-  } else if (view === 'bookings') {
+    dateEl.value = localDateStr();
+  } else {
     dateEl.value = '';
   }
   if (view === 'team') { loadTeam(); return; }
@@ -500,7 +505,11 @@ async function loadBookings() {
   const barberId = me.role==='admin' ? document.getElementById('f-barber').value : '';
   let url = '/api/admin/bookings?';
   if (currentStatus) url += `status=${currentStatus}&`;
-  if (date) url += `date=${date}&`;
+  if (currentView === 'upcoming') {
+    url += `date_from=${localDateStr()}&`;
+  } else if (date) {
+    url += `date=${date}&`;
+  }
   if (barberId) url += `stylist_id=${barberId}&`;
   const bookings = await fetch(url).then(r=>r.json());
   renderBookings(bookings);

@@ -377,7 +377,7 @@ app.post('/api/auth/change-password', requireAuth, (req,res) => {
 
 // ── Admin: Bookings ────────────────────────────────────────────────────────
 app.get('/api/admin/bookings', requireAuth, (req,res) => {
-  const { date, status, stylist_id } = req.query;
+  const { date, date_from, status, stylist_id } = req.query;
   let q = `
     SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min
     FROM bookings b
@@ -386,8 +386,9 @@ app.get('/api/admin/bookings', requireAuth, (req,res) => {
     WHERE 1=1`;
   const p = [];
   if (stylist_id) { q+=' AND b.stylist_id=?'; p.push(stylist_id); }
-  if (date)   { q+=' AND b.appointment_date=?'; p.push(date); }
-  if (status) { q+=' AND b.status=?'; p.push(status); }
+  if (date)      { q+=' AND b.appointment_date=?';  p.push(date); }
+  if (date_from) { q+=' AND b.appointment_date>=?'; p.push(date_from); }
+  if (status)    { q+=' AND b.status=?'; p.push(status); }
   q+=' ORDER BY b.appointment_date ASC, b.appointment_time ASC';
   res.json(db.prepare(q).all(...p));
 });
