@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Login — Gents Barber Shop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    }
+    .login-logo { text-align: center; margin-bottom: 28px; }
+    .login-logo-icon { font-size: 40px; display: block; margin-bottom: 8px; }
+    .login-logo-name { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+    .login-logo-sub { font-size: 12px; color: #888; letter-spacing: 1px; text-transform: uppercase; }
+    .login-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; color: #333; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin-bottom: 6px; }
+    .field input { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 11px 14px; font-size: 15px; font-family: inherit; transition: border-color .15s; }
+    .field input:focus { outline: none; border-color: #8B1A1A; }
+    .btn-login { width: 100%; padding: 13px; background: #8B1A1A; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: background .15s; margin-top: 6px; }
+    .btn-login:hover { background: #6d1414; }
+    .btn-login:disabled { background: #ccc; cursor: not-allowed; }
+    .error-msg { background: #fef0f0; color: #c0392b; border: 1px solid #f5c6c6; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
+    .error-msg.show { display: block; }
+    .back-link { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: #888; text-decoration: none; }
+    .back-link:hover { color: #8B1A1A; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="login-card">
+  <div class="login-logo">
+    <img src="/images/gents/hero.jpg" alt="Gents Barber Shop" style="width:180px;border-radius:6px;margin-bottom:10px">
+    <div class="login-logo-sub">Staff Portal</div>
+  </div>
+
+  <div class="login-title">Sign in to your account</div>
+  <div class="error-msg" id="error-msg"></div>
+
+  <form onsubmit="doLogin(event)">
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="username" autocomplete="username" placeholder="your username" required>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="password" autocomplete="current-password" placeholder="••••••••" required>
+    </div>
+    <button class="btn-login" id="btn-login" type="submit">Sign In</button>
+  </form>
+  <a href="/" class="back-link">← Back to homepage</a>
+</div>
+<script>
+async function doLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const errEl = document.getElementById('error-msg');
+  const btn   = document.getElementById('btn-login');
+  errEl.classList.remove('show');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Signing in...';
+  try {
+    const res  = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+    window.location.href = '/admin.html';
+  } catch(err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+}
+</script>
+</body>
+</html>

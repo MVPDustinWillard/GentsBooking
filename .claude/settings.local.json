@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(npm install:*)",
+      "Bash(npx playwright:*)",
+      "Bash(start chrome:*)",
+      "Bash(timeout 8 node:*)",
+      "Bash(curl:*)",
+      "Bash(npx kill-port:*)",
+      "WebFetch(domain:www.gentshaircuts.com)",
+      "Bash(pkill:*)",
+      "Bash(netstat:*)",
+      "Bash(tasklist:*)",
+      "Bash(kill 22932:*)",
+      "Bash(taskkill:*)",
+      "Bash(xargs -I{} cmd.exe /c \"taskkill /F /PID {}\")",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(railway:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}

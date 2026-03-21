@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Gents Barber Shop</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--accent:#8B1A1A;--accent-lt:#f9f0f0;--dark:#1a1a1a;--sw:220px;--border:#e4e4e4;--bg:#f5f5f0;--radius:12px}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#1a1a1a;display:flex;min-height:100vh}
+
+    /* ── Sidebar ── */
+    .sidebar{width:var(--sw);background:var(--dark);color:#fff;flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
+    .sb-logo{padding:22px 20px 18px;border-bottom:1px solid #333}
+    .sb-logo-icon{display:block;margin-bottom:6px}
+    .sb-logo-name{font-size:15px;font-weight:700}
+    .sb-logo-sub{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.8px}
+    .sb-user{padding:14px 20px;border-bottom:1px solid #333;display:flex;align-items:center;gap:10px}
+    .sb-user-avatar{width:36px;height:36px;border-radius:50%;background:#444;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;overflow:hidden}
+    .sb-user-avatar img{width:100%;height:100%;object-fit:cover}
+    .sb-user-name{font-size:13px;font-weight:700}
+    .sb-user-role{font-size:11px;color:#888}
+    .sb-nav{flex:1;padding:10px 0}
+    .nav-section{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.8px;padding:14px 20px 6px}
+    .nav-link{display:flex;align-items:center;gap:8px;padding:10px 20px;font-size:13px;color:#aaa;text-decoration:none;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+    .nav-link:hover,.nav-link.active{color:#fff;background:rgba(255,255,255,.06);border-left-color:var(--accent)}
+    .sb-footer{padding:14px 20px;border-top:1px solid #333;display:flex;flex-direction:column;gap:8px}
+    .btn-acct{display:block;padding:8px 12px;background:#2a2a2a;color:#ccc;border:none;border-radius:8px;font-size:12px;cursor:pointer;text-align:left;text-decoration:none;transition:background .15s;font-family:inherit}
+    .btn-acct:hover{background:#333}
+    .btn-logout{padding:8px 12px;background:#2a2a2a;color:#ccc;border:none;border-radius:8px;font-size:12px;cursor:pointer;transition:background .15s;font-family:inherit;text-align:left;width:100%}
+    .btn-logout:hover{background:#3a2020;color:#e88}
+
+    /* ── Main ── */
+    .main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+    .topbar{background:#fff;border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .topbar-title{font-size:20px;font-weight:700}
+    .topbar-date{font-size:13px;color:#888}
+    .content{padding:24px 28px;flex:1}
+
+    /* ── Views ── */
+    .view{display:none}
+    .view.active{display:block}
+
+    /* ── Stats ── */
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+    @media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+    .stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+    .stat-val{font-size:26px;font-weight:700;margin-bottom:3px}
+    .stat-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.4px}
+    .c-pending{color:#d97706}.c-confirmed{color:#059669}.c-total{color:#1a1a1a}.c-cancelled{color:#dc2626}
+
+    /* ── Filters ── */
+    .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+    .filter-select,.filter-date{border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer}
+    .filter-select:focus,.filter-date:focus{outline:none;border-color:var(--accent)}
+    .filter-btn{padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;transition:all .12s}
+    .filter-btn:hover{border-color:#999}
+    .filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+    /* ── Table ── */
+    .table-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:auto}
+    table{width:100%;border-collapse:collapse;min-width:700px}
+    thead th{padding:11px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap}
+    tbody tr{border-bottom:1px solid #f0f0f0;transition:background .1s}
+    tbody tr:last-child{border-bottom:none}
+    tbody tr:hover{background:#fafafa}
+    td{padding:12px 16px;font-size:13px;vertical-align:middle}
+    .td-id{font-weight:700;color:#999;font-size:12px}
+    .td-name{font-weight:600;font-size:14px}
+    .td-meta{font-size:12px;color:#888;margin-top:2px}
+    .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+    .badge-pending{background:#fef3c7;color:#d97706}
+    .badge-confirmed{background:#d1fae5;color:#059669}
+    .badge-cancelled{background:#fee2e2;color:#dc2626}
+    .badge-completed{background:#e0e7ff;color:#4f46e5}
+    .actions{display:flex;gap:4px;flex-wrap:wrap}
+    .act{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:all .12s;font-family:inherit;white-space:nowrap}
+    .act:hover{background:#f5f5f5}
+    .act-confirm{border-color:#059669;color:#059669}.act-confirm:hover{background:#059669;color:#fff}
+    .act-cancel{border-color:#dc2626;color:#dc2626}.act-cancel:hover{background:#dc2626;color:#fff}
+    .act-complete{border-color:#4f46e5;color:#4f46e5}.act-complete:hover{background:#4f46e5;color:#fff}
+    .act-restore{border-color:#888;color:#888}.act-restore:hover{background:#888;color:#fff}
+    .no-rows{padding:40px;text-align:center;color:#888;font-size:14px}
+
+    /* Assign select */
+    .assign-select{border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;background:#fff;max-width:130px;cursor:pointer}
+    .assign-select:focus{outline:none;border-color:var(--accent)}
+
+    /* ── Team / Account Management ── */
+    .team-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+    .team-title{font-size:17px;font-weight:700}
+    .btn-add{padding:9px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
+    .btn-add:hover{background:#6d1414}
+    .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+    .team-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative}
+    .team-card.inactive{opacity:.55}
+    .team-card-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+    .team-avatar{width:44px;height:44px;border-radius:50%;background:#222;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;overflow:hidden;position:relative;cursor:pointer}
+    .team-avatar img{width:100%;height:100%;object-fit:cover}
+    .team-avatar-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;font-size:16px}
+    .team-avatar:hover .team-avatar-overlay{opacity:1}
+    .team-name{font-size:15px;font-weight:700}
+    .team-username{font-size:12px;color:#888}
+    .team-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-left:6px}
+    .tb-admin{background:#fef3c7;color:#d97706}
+    .tb-barber{background:#d1fae5;color:#059669}
+    .tb-inactive{background:#fee2e2;color:#dc2626}
+    .team-bio{font-size:13px;color:#666;margin-bottom:14px;min-height:18px}
+    .team-actions{display:flex;gap:6px;flex-wrap:wrap}
+    .team-btn{padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s}
+    .team-btn:hover{background:#f5f5f5}
+    .team-btn-edit{border-color:#888;color:#333}
+    .team-btn-pw{border-color:#4f46e5;color:#4f46e5}.team-btn-pw:hover{background:#4f46e5;color:#fff}
+    .team-btn-deact{border-color:#dc2626;color:#dc2626}.team-btn-deact:hover{background:#dc2626;color:#fff}
+    .team-btn-act{border-color:#059669;color:#059669}.team-btn-act:hover{background:#059669;color:#fff}
+
+    /* ── Modal ── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;display:none}
+    .modal-overlay.open{display:flex}
+    .modal{background:#fff;border-radius:16px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+    .modal-header{padding:20px 24px 0;display:flex;justify-content:space-between;align-items:center}
+    .modal-title{font-size:18px;font-weight:700}
+    .modal-close{width:30px;height:30px;border:none;background:#f0f0f0;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+    .modal-close:hover{background:#e0e0e0}
+    .modal-body{padding:20px 24px}
+    .modal-footer{padding:0 24px 20px;display:flex;gap:10px;justify-content:flex-end}
+    .field{margin-bottom:13px}
+    .field label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;margin-bottom:5px}
+    .field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;transition:border-color .15s}
+    .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent)}
+    .field textarea{resize:vertical;min-height:60px}
+    .btn-modal-save{padding:10px 22px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+    .btn-modal-save:hover{background:#6d1414}
+    .btn-modal-save:disabled{background:#ccc;cursor:not-allowed}
+    .btn-modal-cancel{padding:10px 18px;background:#f0f0f0;color:#333;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit}
+    .btn-modal-cancel:hover{background:#e0e0e0}
+    .alert{border-radius:8px;padding:9px 13px;font-size:13px;margin-bottom:12px;display:none}
+    .alert.show{display:block}
+    .alert-error{background:#fef0f0;color:#c0392b;border:1px solid #f5c6c6}
+    .alert-success{background:#f0faf4;color:#1a7a4a;border:1px solid #b0d8c0}
+    .hint{font-size:12px;color:#999;margin-top:3px}
+
+    @media(max-width:700px){.sidebar{display:none}.main{margin-left:0}}
+    .spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:5px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="sb-logo">
+    <img src="/images/gents/hero.jpg" alt="Gents Barber Shop" style="width:100%;max-width:160px;border-radius:4px;display:block;margin-bottom:6px">
+    <div class="sb-logo-sub">Staff Dashboard</div>
+  </div>
+  <div class="sb-user">
+    <div class="sb-user-avatar" id="sb-avatar">—</div>
+    <div>
+      <div class="sb-user-name" id="sb-name">—</div>
+      <div class="sb-user-role" id="sb-role"></div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="nav-section">Bookings</div>
+    <a class="nav-link active" id="nav-all"      onclick="showView('bookings','All Bookings',this)">📋 All Bookings</a>
+    <a class="nav-link"        id="nav-today"    onclick="showView('today','Today\'s Bookings',this)">📅 Today</a>
+    <a class="nav-link"        id="nav-upcoming" onclick="showView('upcoming','Upcoming',this)">🗓 Upcoming</a>
+    <div class="nav-section" id="nav-team-section" style="display:none">Team</div>
+    <a class="nav-link" id="nav-team" style="display:none" onclick="showView('team','Team Management',this)">👥 Manage Team</a>
+    <div class="nav-section">Customers</div>
+    <a class="nav-link" id="nav-customers" onclick="showView('customers','Customers',this)">👤 Customers</a>
+    <div class="nav-section">Quick Links</div>
+    <a class="nav-link" href="/booking" target="_blank">+ New Booking</a>
+  </div>
+  <div class="sb-footer">
+    <a class="btn-acct" href="/account.html">🔑 Change Password</a>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="view-title">All Bookings</div>
+    <div class="topbar-date" id="topbar-date"></div>
+  </div>
+  <div class="content">
+
+    <!-- Bookings view -->
+    <div class="view active" id="view-bookings">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-val c-total"     id="s-total">—</div><div class="stat-label">Total</div></div>
+        <div class="stat-card"><div class="stat-val c-pending"   id="s-pending">—</div><div class="stat-label">Pending</div></div>
+        <div class="stat-card"><div class="stat-val c-confirmed" id="s-confirmed">—</div><div class="stat-label">Confirmed</div></div>
+        <div class="stat-card"><div class="stat-val c-cancelled" id="s-cancelled">—</div><div class="stat-label">Cancelled</div></div>
+      </div>
+      <div class="filters">
+        <button class="filter-btn active" id="fb-all"       onclick="setStatus('')">All</button>
+        <button class="filter-btn"        id="fb-pending"   onclick="setStatus('pending')">Pending</button>
+        <button class="filter-btn"        id="fb-confirmed" onclick="setStatus('confirmed')">Confirmed</button>
+        <button class="filter-btn"        id="fb-completed" onclick="setStatus('completed')">Completed</button>
+        <button class="filter-btn"        id="fb-cancelled" onclick="setStatus('cancelled')">Cancelled</button>
+        <input type="date" class="filter-date" id="f-date" onchange="loadBookings()">
+        <select class="filter-select" id="f-barber" style="display:none" onchange="loadBookings()">
+          <option value="">All Barbers</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Customer</th><th>Service</th><th>Date &amp; Time</th>
+              <th>Barber</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="bookings-tbody">
+            <tr><td colspan="7" class="no-rows">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Customers view -->
+    <div class="view" id="view-customers">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <input type="text" id="cust-search" placeholder="Search by name or email…"
+          style="flex:1;padding:9px 14px;border:1px solid #ddd;border-radius:6px;font-size:14px"
+          oninput="loadCustomers()">
+      </div>
+      <div id="cust-table-wrap" style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:#f5f0e8;text-align:left">
+              <th style="padding:10px 12px;font-weight:600;color:#333">Name</th>
+              <th style="padding:10px 12px;font-weight:600;color:#333">Email</th>
+              <th style="padding:10px 12px;font-weight:600;color:#333">Phone</th>
+              <th style="padding:10px 12px;font-weight:600;color:#333;text-align:center">Visits</th>
+              <th style="padding:10px 12px;font-weight:600;color:#333">Last Visit</th>
+              <th style="padding:10px 12px;font-weight:600;color:#333">Notes</th>
+              <th style="padding:10px 12px"></th>
+            </tr>
+          </thead>
+          <tbody id="cust-tbody"><tr><td colspan="7" style="padding:24px;color:#888;text-align:center">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Team view (admin only) -->
+    <div class="view" id="view-team">
+      <div class="team-header">
+        <div class="team-title">Team Members</div>
+        <button class="btn-add" onclick="openAddModal()">+ Add Member</button>
+      </div>
+      <div class="alert alert-success" id="team-ok" style="margin-bottom:16px"></div>
+      <div class="team-grid" id="team-grid">
+        <div style="color:#888;font-size:14px">Loading...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Edit Member Modal ── -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="edit-modal-title">Edit Member</div>
+      <button class="modal-close" onclick="closeModal('edit-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error" id="edit-err"></div>
+      <input type="hidden" id="edit-id">
+      <div class="field"><label>Full Name</label><input type="text" id="edit-name"></div>
+      <div class="field"><label>Bio / Specialties</label><textarea id="edit-bio"></textarea></div>
+      <div class="field" id="edit-role-wrap">
+        <label>Role</label>
+        <select id="edit-role">
+          <option value="barber">Barber</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn-modal-save"   onclick="saveEdit()" id="btn-edit-save">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reset Password Modal ── -->
+<div class="modal-overlay" id="pw-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Reset Password</div>
+      <button class="modal-close" onclick="closeModal('pw-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error"   id="pw-err"></div>
+      <div class="alert alert-success" id="pw-ok"></div>
+      <input type="hidden" id="pw-id">
+      <p style="font-size:14px;color:#555;margin-bottom:14px">Set a new password for <strong id="pw-username"></strong>.</p>
+      <div class="field">
+        <label>New Password</label>
+        <input type="password" id="pw-new" minlength="6">
+        <div class="hint">Minimum 6 characters</div>
+      </div>
+      <div class="field">
+        <label>Confirm Password</label>
+        <input type="password" id="pw-new2">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeModal('pw-modal')">Cancel</button>
+      <button class="btn-modal-save"   onclick="savePassword()" id="btn-pw-save">Set Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Member Modal ── -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Team Member</div>
+      <button class="modal-close" onclick="closeModal('add-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error" id="add-err"></div>
+      <div class="field"><label>Full Name *</label><input type="text" id="add-name" placeholder="e.g. Tony"></div>
+      <div class="field"><label>Username *</label><input type="text" id="add-username" placeholder="e.g. tony" autocomplete="off"></div>
+      <div class="field">
+        <label>Password *</label>
+        <input type="password" id="add-pw" autocomplete="new-password">
+        <div class="hint">Minimum 6 characters</div>
+      </div>
+      <div class="field"><label>Bio / Specialties</label><textarea id="add-bio" placeholder="Optional"></textarea></div>
+      <div class="field">
+        <label>Role</label>
+        <select id="add-role">
+          <option value="barber">Barber</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn-modal-save"   onclick="addMember()" id="btn-add-save">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Customer Detail Drawer ── -->
+<div id="cust-drawer-overlay" onclick="closeCustDrawer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200"></div>
+<div id="cust-drawer" style="display:none;position:fixed;top:0;right:0;width:480px;max-width:95vw;height:100vh;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.15);z-index:201;overflow-y:auto;flex-direction:column">
+  <div style="background:#6b1212;color:#fff;padding:18px 20px;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:17px;font-weight:700" id="cd-name">—</div>
+      <div style="font-size:12px;opacity:.75" id="cd-email">—</div>
+    </div>
+    <button onclick="closeCustDrawer()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px">✕</button>
+  </div>
+  <div style="padding:20px">
+    <div class="alert alert-success" id="cd-ok" style="margin-bottom:12px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.5px">Phone</label>
+        <input type="text" id="cd-phone" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px" onblur="saveCustField('phone',this.value)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.5px">Name</label>
+        <input type="text" id="cd-name-input" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px" onblur="saveCustField('name',this.value)">
+      </div>
+    </div>
+    <div style="margin-bottom:18px">
+      <label style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.5px">Notes</label>
+      <textarea id="cd-notes" rows="5" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;resize:vertical;box-sizing:border-box" placeholder="Preferred style, allergies, preferences…" onblur="saveCustField('notes',this.value)"></textarea>
+      <div style="font-size:11px;color:#888;margin-top:4px">Auto-saved on blur</div>
+    </div>
+    <div id="cd-merge-wrap" style="margin-bottom:20px;display:none">
+      <button onclick="openMergeModal()" style="padding:8px 16px;background:#fff;border:2px solid #8b1a1a;color:#8b1a1a;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Merge with another account…</button>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:10px">Booking History</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:#f5f0e8;text-align:left">
+          <th style="padding:8px 10px">Date</th>
+          <th style="padding:8px 10px">Service</th>
+          <th style="padding:8px 10px">Barber</th>
+          <th style="padding:8px 10px">Status</th>
+        </tr>
+      </thead>
+      <tbody id="cd-bookings"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Merge Modal ── -->
+<div class="modal-overlay" id="merge-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Merge Customer Accounts</div>
+      <button class="modal-close" onclick="closeModal('merge-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error"   id="merge-err"></div>
+      <div class="alert alert-success" id="merge-ok"></div>
+      <p style="font-size:13px;color:#555;margin-bottom:14px">Search for the duplicate customer account to merge into the current customer. All bookings will move to the account you choose to keep.</p>
+      <div class="field">
+        <label>Find duplicate account (search by email or name)</label>
+        <input type="text" id="merge-search" placeholder="Type email or name…" oninput="searchMergeTarget()" autocomplete="off">
+      </div>
+      <div id="merge-results" style="border:1px solid #ddd;border-radius:6px;display:none;max-height:160px;overflow-y:auto;margin-top:-8px;margin-bottom:14px"></div>
+      <div id="merge-preview" style="display:none">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#333">Choose which email to keep as the canonical account:</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <label id="merge-opt-a" style="border:2px solid #ddd;border-radius:8px;padding:12px;cursor:pointer;display:block">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <input type="radio" name="merge-keep" value="a"> <strong id="merge-a-name">—</strong>
+            </div>
+            <div style="font-size:12px;color:#555" id="merge-a-email">—</div>
+            <div style="font-size:12px;color:#888;margin-top:4px" id="merge-a-stats">—</div>
+          </label>
+          <label id="merge-opt-b" style="border:2px solid #ddd;border-radius:8px;padding:12px;cursor:pointer;display:block">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <input type="radio" name="merge-keep" value="b"> <strong id="merge-b-name">—</strong>
+            </div>
+            <div style="font-size:12px;color:#555" id="merge-b-email">—</div>
+            <div style="font-size:12px;color:#888;margin-top:4px" id="merge-b-stats">—</div>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeModal('merge-modal')">Cancel</button>
+      <button class="btn-modal-save" onclick="confirmMerge()" id="btn-merge-save" style="display:none">Merge Accounts</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let me = null;
+let allStylists = [];
+let currentStatus = '';
+
+// ── Init ──────────────────────────────────────────────────
+async function init() {
+  const r = await fetch('/api/auth/me');
+  if (!r.ok) { window.location.href = '/login.html'; return; }
+  me = await r.json();
+  document.getElementById('sb-name').textContent = me.name;
+  document.getElementById('sb-role').textContent = me.role === 'admin' ? 'Administrator' : 'Barber';
+  const initials = me.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const sbAv = document.getElementById('sb-avatar');
+  sbAv.innerHTML = me.photo_url ? `<img src="${me.photo_url}" alt="">` : initials;
+  document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  if (me.role === 'admin') {
+    document.getElementById('f-barber').style.display = '';
+    document.getElementById('nav-team').style.display = '';
+    document.getElementById('nav-team-section').style.display = '';
+    const barbers = await fetch('/api/admin/stylists').then(r=>r.json());
+    allStylists = barbers;
+    const sel = document.getElementById('f-barber');
+    barbers.filter(s=>s.role==='barber'||s.role==='stylist').forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id; o.textContent = s.name; sel.appendChild(o);
+    });
+  }
+  loadBookings();
+}
+
+// ── Views ──────────────────────────────────────────────────
+function showView(view, title, el) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById(`view-${view}`).classList.add('active');
+  if (el) el.classList.add('active');
+  document.getElementById('view-title').textContent = title;
+  const dateEl = document.getElementById('f-date');
+  if (view === 'today') {
+    dateEl.value = new Date().toISOString().split('T')[0];
+  } else if (view === 'upcoming') {
+    dateEl.value = '';
+  } else if (view === 'bookings') {
+    dateEl.value = '';
+  }
+  if (view === 'team') { loadTeam(); return; }
+  if (view === 'customers') { loadCustomers(); return; }
+  loadBookings();
+}
+
+// ── Bookings ──────────────────────────────────────────────
+function setStatus(s) {
+  currentStatus = s;
+  ['all','pending','confirmed','completed','cancelled'].forEach(k =>
+    document.getElementById(`fb-${k}`).classList.toggle('active', (k==='all'&&!s)||k===s));
+  loadBookings();
+}
+
+async function loadBookings() {
+  const date = document.getElementById('f-date').value;
+  const barberId = me.role==='admin' ? document.getElementById('f-barber').value : '';
+  let url = '/api/admin/bookings?';
+  if (currentStatus) url += `status=${currentStatus}&`;
+  if (date) url += `date=${date}&`;
+  if (barberId) url += `stylist_id=${barberId}&`;
+  const bookings = await fetch(url).then(r=>r.json());
+  renderBookings(bookings);
+  document.getElementById('s-total').textContent     = bookings.length;
+  document.getElementById('s-pending').textContent   = bookings.filter(b=>b.status==='pending').length;
+  document.getElementById('s-confirmed').textContent = bookings.filter(b=>b.status==='confirmed').length;
+  document.getElementById('s-cancelled').textContent = bookings.filter(b=>b.status==='cancelled').length;
+}
+
+function renderBookings(bookings) {
+  const tbody = document.getElementById('bookings-tbody');
+  if (!bookings.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="no-rows">No bookings found for the selected filters.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = bookings.map(b => `
+    <tr id="brow-${b.id}">
+      <td class="td-id">#${b.id}</td>
+      <td>
+        <div class="td-name">${esc(b.customer_name)} <a onclick="openCustDrawer('${esc(b.customer_email)}')" style="font-size:11px;color:#8b1a1a;font-weight:500;cursor:pointer;text-decoration:none;margin-left:4px">profile</a></div>
+        <div class="td-meta">${esc(b.customer_email)}</div>
+        ${b.customer_phone?`<div class="td-meta">${esc(b.customer_phone)}</div>`:''}
+        ${b.notes?`<div class="td-meta" style="font-style:italic">📝 ${esc(b.notes)}</div>`:''}
+      </td>
+      <td>
+        <div>${esc(b.service_name)}</div>
+        <div class="td-meta">${b.duration_min} min · $${(b.price_cents/100).toFixed(0)}</div>
+      </td>
+      <td>
+        <div style="font-weight:600">${fmtDate(b.appointment_date)}</div>
+        <div class="td-meta">${fmtTime(b.appointment_time)}</div>
+      </td>
+      <td>${me.role==='admin' ? renderAssign(b) : `<span>${esc(b.stylist_name||'Unassigned')}</span>`}</td>
+      <td><span class="badge badge-${b.status}">${b.status}</span></td>
+      <td class="actions">${me.role==='admin' ? renderActions(b) : '<span style="font-size:12px;color:#bbb">View only</span>'}</td>
+    </tr>`).join('');
+}
+
+function renderAssign(b) {
+  const opts = allStylists.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active)
+    .map(s=>`<option value="${s.id}" ${b.stylist_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
+  return `<select class="assign-select" onchange="assignBarber(${b.id},this.value)">
+    <option value="" ${!b.stylist_id?'selected':''}>Unassigned</option>${opts}
+  </select>`;
+}
+
+function renderActions(b) {
+  const a = [];
+  if (b.status==='pending')    a.push(`<button class="act act-confirm"  onclick="updateBooking(${b.id},'confirmed')">Confirm</button>`);
+  if (b.status==='confirmed')  a.push(`<button class="act act-complete" onclick="updateBooking(${b.id},'completed')">Complete</button>`);
+  if (b.status!=='cancelled'&&b.status!=='completed')
+    a.push(`<button class="act act-cancel" onclick="updateBooking(${b.id},'cancelled')">Cancel</button>`);
+  if (b.status==='cancelled'||b.status==='completed')
+    a.push(`<button class="act act-restore" onclick="updateBooking(${b.id},'pending')">Restore</button>`);
+  return a.join('');
+}
+
+async function updateBooking(id, status) {
+  await fetch(`/api/admin/bookings/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+  loadBookings();
+}
+
+async function assignBarber(bookingId, stylistId) {
+  await fetch(`/api/admin/bookings/${bookingId}`,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({stylist_id: stylistId ? parseInt(stylistId) : null})
+  });
+  // No full reload needed — just update visually
+}
+
+// ── Team Management ───────────────────────────────────────
+async function loadTeam() {
+  const members = await fetch('/api/admin/stylists').then(r=>r.json());
+  allStylists = members;
+  const grid = document.getElementById('team-grid');
+  if (!members.length) { grid.innerHTML='<div style="color:#888;font-size:14px">No team members yet.</div>'; return; }
+  const fallback = ['💈','✂','🪒','👤'];
+  grid.innerHTML = members.map((m,i) => `
+    <input type="file" id="photo-input-${m.id}" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="uploadMemberPhoto(${m.id},this)">
+    <div class="team-card ${m.active?'':'inactive'}" id="tc-${m.id}">
+      <div class="team-card-header">
+        <div class="team-avatar" onclick="document.getElementById('photo-input-${m.id}').click()" title="Click to change photo">
+          ${m.photo_url ? `<img src="${m.photo_url}" alt="${esc(m.name)}">` : fallback[i%fallback.length]}
+          <div class="team-avatar-overlay">📷</div>
+        </div>
+        <div>
+          <div class="team-name">
+            ${esc(m.name)}
+            <span class="team-badge ${m.active?(m.role==='admin'?'tb-admin':'tb-barber'):'tb-inactive'}">${m.active?(m.role==='admin'?'admin':'barber'):'inactive'}</span>
+          </div>
+          <div class="team-username">@${esc(m.username)}</div>
+        </div>
+      </div>
+      <div class="team-bio">${esc(m.bio)||'<span style="color:#bbb">No bio set</span>'}</div>
+      <div class="team-actions">
+        <button class="team-btn team-btn-edit" onclick="openEditModal(${m.id})">Edit</button>
+        <button class="team-btn team-btn-pw"   onclick="openPwModal(${m.id})">Reset PW</button>
+        ${m.active
+          ? `<button class="team-btn team-btn-deact" onclick="toggleActive(${m.id},false)">Deactivate</button>`
+          : `<button class="team-btn team-btn-act"   onclick="toggleActive(${m.id},true)">Reactivate</button>`}
+      </div>
+    </div>`).join('');
+}
+
+async function uploadMemberPhoto(id, input) {
+  const file = input.files[0]; if (!file) return;
+  const fd = new FormData(); fd.append('photo', file);
+  try {
+    const res  = await fetch(`/api/admin/stylists/${id}/photo`, { method:'POST', body:fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    showTeamOk('Photo updated.');
+    loadTeam();
+  } catch(e) { showTeamOk('Error: ' + e.message); }
+  input.value = '';
+}
+
+function openAddModal() {
+  document.getElementById('add-name').value='';
+  document.getElementById('add-username').value='';
+  document.getElementById('add-pw').value='';
+  document.getElementById('add-bio').value='';
+  document.getElementById('add-role').value='barber';
+  document.getElementById('add-err').classList.remove('show');
+  openModal('add-modal');
+}
+
+async function addMember() {
+  const name=document.getElementById('add-name').value.trim();
+  const username=document.getElementById('add-username').value.trim();
+  const password=document.getElementById('add-pw').value;
+  const bio=document.getElementById('add-bio').value.trim();
+  const role=document.getElementById('add-role').value;
+  const errEl=document.getElementById('add-err');
+  errEl.classList.remove('show');
+  if(!name||!username||!password){errEl.textContent='Name, username and password are required.';errEl.classList.add('show');return;}
+  const btn=document.getElementById('btn-add-save');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Adding...';
+  try{
+    const res=await fetch('/api/admin/stylists',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,username,password,bio,role})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error);
+    closeModal('add-modal');
+    showTeamOk(`${name} added successfully.`);
+    loadTeam();
+  }catch(e){errEl.textContent=e.message;errEl.classList.add('show');}
+  btn.disabled=false;btn.textContent='Add Member';
+}
+
+function openEditModal(id) {
+  const m = allStylists.find(s=>s.id===id);
+  if(!m)return;
+  document.getElementById('edit-id').value=id;
+  document.getElementById('edit-name').value=m.name;
+  document.getElementById('edit-bio').value=m.bio||'';
+  document.getElementById('edit-role').value=m.role;
+  document.getElementById('edit-err').classList.remove('show');
+  document.getElementById('edit-modal-title').textContent=`Edit — ${m.name}`;
+  openModal('edit-modal');
+}
+
+async function saveEdit() {
+  const id=document.getElementById('edit-id').value;
+  const name=document.getElementById('edit-name').value.trim();
+  const bio=document.getElementById('edit-bio').value.trim();
+  const role=document.getElementById('edit-role').value;
+  const errEl=document.getElementById('edit-err');
+  errEl.classList.remove('show');
+  if(!name){errEl.textContent='Name is required.';errEl.classList.add('show');return;}
+  const btn=document.getElementById('btn-edit-save');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Saving...';
+  try{
+    const res=await fetch(`/api/admin/stylists/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,bio,role})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error);
+    closeModal('edit-modal');
+    showTeamOk('Changes saved.');
+    loadTeam();
+  }catch(e){errEl.textContent=e.message;errEl.classList.add('show');}
+  btn.disabled=false;btn.textContent='Save Changes';
+}
+
+function openPwModal(id) {
+  const m=allStylists.find(s=>s.id===id);
+  document.getElementById('pw-id').value=id;
+  document.getElementById('pw-username').textContent=m?m.name:'this user';
+  document.getElementById('pw-new').value='';
+  document.getElementById('pw-new2').value='';
+  document.getElementById('pw-err').classList.remove('show');
+  document.getElementById('pw-ok').classList.remove('show');
+  openModal('pw-modal');
+}
+
+async function savePassword() {
+  const id=document.getElementById('pw-id').value;
+  const p1=document.getElementById('pw-new').value;
+  const p2=document.getElementById('pw-new2').value;
+  const errEl=document.getElementById('pw-err');
+  const okEl=document.getElementById('pw-ok');
+  errEl.classList.remove('show');okEl.classList.remove('show');
+  if(p1!==p2){errEl.textContent='Passwords do not match.';errEl.classList.add('show');return;}
+  if(p1.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.classList.add('show');return;}
+  const btn=document.getElementById('btn-pw-save');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Saving...';
+  try{
+    const res=await fetch(`/api/admin/stylists/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({new_password:p1})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error);
+    okEl.textContent='Password updated successfully.';okEl.classList.add('show');
+    document.getElementById('pw-new').value='';
+    document.getElementById('pw-new2').value='';
+  }catch(e){errEl.textContent=e.message;errEl.classList.add('show');}
+  btn.disabled=false;btn.textContent='Set Password';
+}
+
+async function toggleActive(id, active) {
+  await fetch(`/api/admin/stylists/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active})});
+  showTeamOk(active?'Account reactivated.':'Account deactivated.');
+  loadTeam();
+}
+
+function showTeamOk(msg) {
+  const el=document.getElementById('team-ok');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ── Modal helpers ─────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
+
+// ── Auth ──────────────────────────────────────────────────
+async function logout() {
+  await fetch('/api/auth/logout',{method:'POST'});
+  window.location.href='/login.html';
+}
+
+// ── Formatting ────────────────────────────────────────────
+function fmtTime(t){const[h,m]=t.split(':').map(Number);return`${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`}
+function fmtDate(d){const[y,mo,day]=d.split('-').map(Number);return new Date(y,mo-1,day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+init();
+
+// ── Customers ──────────────────────────────────────────────
+let custDrawerEmail = null;
+
+async function loadCustomers() {
+  const q = document.getElementById('cust-search').value.trim();
+  const url = '/api/admin/customers' + (q ? `?q=${encodeURIComponent(q)}` : '');
+  const custs = await fetch(url).then(r=>r.json());
+  const tbody = document.getElementById('cust-tbody');
+  if (!custs.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:24px;color:#888;text-align:center">No customers found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = custs.map(c => `
+    <tr style="border-bottom:1px solid #eee">
+      <td style="padding:10px 12px">${esc(c.name)||'<em style="color:#aaa">—</em>'}</td>
+      <td style="padding:10px 12px;color:#555">${esc(c.email)}</td>
+      <td style="padding:10px 12px;color:#555">${esc(c.phone)||'—'}</td>
+      <td style="padding:10px 12px;text-align:center;font-weight:600">${c.booking_count||0}</td>
+      <td style="padding:10px 12px;color:#555">${c.last_visit ? fmtDate(c.last_visit) : '—'}</td>
+      <td style="padding:10px 12px;color:#777;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.notes)||''}</td>
+      <td style="padding:10px 12px"><button onclick="openCustDrawer('${esc(c.email)}')" style="padding:5px 12px;background:#6b1212;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer">View</button></td>
+    </tr>`).join('');
+}
+
+async function openCustDrawer(email) {
+  custDrawerEmail = email;
+  const data = await fetch(`/api/admin/customers/${encodeURIComponent(email)}`).then(r=>r.json());
+  document.getElementById('cd-name').textContent = data.name || data.email;
+  document.getElementById('cd-email').textContent = data.email;
+  document.getElementById('cd-name-input').value = data.name || '';
+  document.getElementById('cd-phone').value = data.phone || '';
+  document.getElementById('cd-notes').value = data.notes || '';
+  document.getElementById('cd-ok').textContent = '';
+  document.getElementById('cd-merge-wrap').style.display = me.role==='admin' ? '' : 'none';
+
+  const bookings = data.bookings || [];
+  document.getElementById('cd-bookings').innerHTML = bookings.length
+    ? bookings.map(b=>`<tr style="border-bottom:1px solid #eee">
+        <td style="padding:8px 10px">${fmtDate(b.appointment_date)} ${fmtTime(b.appointment_time)}</td>
+        <td style="padding:8px 10px">${esc(b.service_name)||'—'}</td>
+        <td style="padding:8px 10px">${esc(b.stylist_name)||'Any'}</td>
+        <td style="padding:8px 10px"><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${b.status==='confirmed'?'#d4edda':b.status==='cancelled'?'#f8d7da':'#fff3cd'};color:${b.status==='confirmed'?'#155724':b.status==='cancelled'?'#721c24':'#856404'}">${b.status}</span></td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="padding:16px;color:#888;text-align:center">No bookings yet</td></tr>';
+
+  const overlay = document.getElementById('cust-drawer-overlay');
+  const drawer = document.getElementById('cust-drawer');
+  overlay.style.display = 'block';
+  drawer.style.display = 'flex';
+}
+
+function closeCustDrawer() {
+  document.getElementById('cust-drawer-overlay').style.display = 'none';
+  document.getElementById('cust-drawer').style.display = 'none';
+  custDrawerEmail = null;
+}
+
+async function saveCustField(field, value) {
+  if (!custDrawerEmail) return;
+  const r = await fetch(`/api/admin/customers/${encodeURIComponent(custDrawerEmail)}`, {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({[field]: value})
+  });
+  if (r.ok) {
+    const ok = document.getElementById('cd-ok');
+    ok.textContent = 'Saved';
+    setTimeout(()=>ok.textContent='', 2000);
+    loadCustomers();
+  }
+}
+
+// ── Merge ──────────────────────────────────────────────────
+let mergeTargetData = null;
+
+function openMergeModal() {
+  mergeTargetData = null;
+  document.getElementById('merge-err').textContent = '';
+  document.getElementById('merge-ok').textContent = '';
+  document.getElementById('merge-search').value = '';
+  document.getElementById('merge-results').style.display = 'none';
+  document.getElementById('merge-results').innerHTML = '';
+  document.getElementById('merge-preview').style.display = 'none';
+  document.getElementById('btn-merge-save').style.display = 'none';
+  document.getElementById('merge-modal').classList.add('open');
+}
+
+let mergeSearchTimer = null;
+function searchMergeTarget() {
+  clearTimeout(mergeSearchTimer);
+  mergeSearchTimer = setTimeout(async () => {
+    const q = document.getElementById('merge-search').value.trim();
+    if (!q) { document.getElementById('merge-results').style.display='none'; return; }
+    const custs = await fetch(`/api/admin/customers?q=${encodeURIComponent(q)}`).then(r=>r.json());
+    const filtered = custs.filter(c => c.email !== custDrawerEmail);
+    const el = document.getElementById('merge-results');
+    if (!filtered.length) {
+      el.innerHTML = '<div style="padding:10px 14px;color:#888;font-size:13px">No customers found</div>';
+    } else {
+      el.innerHTML = filtered.map(c=>`
+        <div onclick="selectMergeTarget('${esc(c.email)}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px" onmouseover="this.style.background='#f5f0e8'" onmouseout="this.style.background=''">
+          <strong>${esc(c.name)||esc(c.email)}</strong>
+          <span style="color:#888;margin-left:6px">${esc(c.email)}</span>
+          <span style="color:#aaa;margin-left:6px">${c.booking_count||0} visits</span>
+        </div>`).join('');
+    }
+    el.style.display = 'block';
+  }, 300);
+}
+
+async function selectMergeTarget(email) {
+  document.getElementById('merge-results').style.display = 'none';
+  document.getElementById('merge-search').value = email;
+  const [dataA, dataB] = await Promise.all([
+    fetch(`/api/admin/customers/${encodeURIComponent(custDrawerEmail)}`).then(r=>r.json()),
+    fetch(`/api/admin/customers/${encodeURIComponent(email)}`).then(r=>r.json())
+  ]);
+  mergeTargetData = {a: dataA, b: dataB};
+  document.getElementById('merge-a-name').textContent  = dataA.name || dataA.email;
+  document.getElementById('merge-a-email').textContent = dataA.email;
+  document.getElementById('merge-a-stats').textContent = `${dataA.bookings?.length||0} bookings${dataA.notes?' · has notes':''}`;
+  document.getElementById('merge-b-name').textContent  = dataB.name || dataB.email;
+  document.getElementById('merge-b-email').textContent = dataB.email;
+  document.getElementById('merge-b-stats').textContent = `${dataB.bookings?.length||0} bookings${dataB.notes?' · has notes':''}`;
+  document.querySelectorAll('input[name="merge-keep"]').forEach(r=>r.checked=false);
+  document.getElementById('merge-preview').style.display = '';
+  document.getElementById('btn-merge-save').style.display = '';
+}
+
+async function confirmMerge() {
+  if (!mergeTargetData) return;
+  const keepChoice = document.querySelector('input[name="merge-keep"]:checked')?.value;
+  if (!keepChoice) { document.getElementById('merge-err').textContent='Please choose which account to keep'; return; }
+  const keep_email = keepChoice==='a' ? mergeTargetData.a.email : mergeTargetData.b.email;
+  const drop_email = keepChoice==='a' ? mergeTargetData.b.email : mergeTargetData.a.email;
+  document.getElementById('merge-err').textContent = '';
+  const r = await fetch('/api/admin/customers/merge', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({keep_email, drop_email})
+  });
+  if (!r.ok) {
+    document.getElementById('merge-err').textContent = (await r.json()).error || 'Merge failed';
+    return;
+  }
+  document.getElementById('merge-ok').textContent = 'Accounts merged successfully!';
+  setTimeout(() => {
+    closeModal('merge-modal');
+    loadCustomers();
+    // Reopen drawer with canonical account
+    openCustDrawer(keep_email);
+  }, 1200);
+}
+</script>
+</body>
+</html>

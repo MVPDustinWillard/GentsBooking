@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book an Appointment — Gents Barber Shop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent: #8B1A1A;
+      --accent-light: #f9f0f0;
+      --dark: #222;
+      --text: #1a1a1a;
+      --muted: #666;
+      --border: #e4e4e4;
+      --bg: #f5f5f0;
+      --white: #fff;
+      --radius: 12px;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* Header */
+    .site-header {
+      background: var(--dark);
+      color: #fff;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 200;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { font-size: 22px; }
+    .logo-text { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub  { font-size: 11px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; }
+    .header-addr { font-size: 12px; color: #aaa; display: none; }
+    @media(min-width:600px){ .header-addr { display: block; } }
+
+    /* Layout */
+    .layout { max-width: 980px; margin: 0 auto; padding: 24px 16px; display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+    @media(max-width:700px){ .layout { grid-template-columns: 1fr; } .sidebar { order: -1; } }
+
+    /* Steps indicator */
+    .steps-bar { display: flex; background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-bottom: 20px; }
+    .step-tab { flex: 1; padding: 12px 8px; text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); border-right: 1px solid var(--border); cursor: default; position: relative; }
+    .step-tab:last-child { border-right: none; }
+    .step-tab.active { color: var(--accent); background: var(--accent-light); }
+    .step-tab.done { color: #2d7d4f; }
+    .step-tab.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
+    .step-num { display: block; font-size: 10px; font-weight: 400; color: inherit; margin-bottom: 2px; }
+
+    /* Cards */
+    .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-bottom: 16px; }
+    .card-header { padding: 20px 20px 0; }
+    .card-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .card-sub { font-size: 14px; color: var(--muted); }
+
+    /* Step panels — show/hide */
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+
+    /* Service list */
+    .svc-category { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; padding: 12px 20px 4px; }
+    .svc-item { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-top: 1px solid #f0f0f0; cursor: pointer; transition: background .12s; }
+    .svc-item:hover { background: #fafafa; }
+    .svc-item.selected { background: var(--accent-light); }
+    .svc-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ccc; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .svc-item.selected .svc-check { background: var(--accent); border-color: var(--accent); }
+    .svc-item.selected .svc-check::after { content: ''; width: 9px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translateY(-1px); display: block; }
+    .svc-info { flex: 1; }
+    .svc-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .svc-meta { font-size: 13px; color: var(--muted); }
+    .svc-price { font-size: 14px; font-weight: 700; }
+
+    /* Stylist grid */
+    .stylist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 16px 20px 20px; }
+    .stylist-card { border: 2px solid var(--border); border-radius: 10px; padding: 16px 12px; text-align: center; cursor: pointer; transition: all .15s; }
+    .stylist-card:hover { border-color: #bbb; }
+    .stylist-card.selected { border-color: var(--accent); background: var(--accent-light); }
+    .stylist-avatar { width: 52px; height: 52px; border-radius: 50%; background: #ddd; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; }
+    .stylist-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .stylist-name { font-size: 13px; font-weight: 700; }
+    .stylist-bio { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* Date + slots */
+    .date-row { padding: 16px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f0f0f0; }
+    .date-row label { font-size: 13px; font-weight: 600; }
+    .date-input { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
+    .slots-section { padding: 16px 20px 20px; }
+    .slots-label { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 10px; }
+    .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+    .slot-btn { padding: 9px 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--white); font-size: 13px; cursor: pointer; text-align: center; transition: all .12s; }
+    .slot-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .slot-btn.selected { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+    .no-slots { font-size: 14px; color: var(--muted); padding: 10px 0; }
+
+    /* Contact form */
+    .form-body { padding: 16px 20px 20px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+    .field input, .field textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 14px; font-family: inherit; transition: border-color .15s; }
+    .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+    .field.required label::after { content: ' *'; color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 70px; }
+
+    /* Booking summary (step 4 confirm box) */
+    .confirm-summary { background: var(--accent-light); border: 1px solid #e8c0c0; border-radius: 10px; padding: 16px; margin-bottom: 16px; font-size: 14px; }
+    .confirm-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .confirm-row:last-child { margin-bottom: 0; }
+    .confirm-label { color: var(--muted); }
+    .confirm-val { font-weight: 600; text-align: right; max-width: 60%; }
+
+    /* Nav buttons */
+    .nav-row { padding: 0 20px 20px; display: flex; gap: 10px; justify-content: space-between; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 12px 22px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; border: none; transition: all .15s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #6d1414; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #f0f0f0; }
+
+    /* Sidebar */
+    .sidebar-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; position: sticky; top: 84px; }
+    .sidebar-shop { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .sidebar-shop-icon { font-size: 28px; }
+    .sidebar-shop-name { font-size: 15px; font-weight: 700; }
+    .sidebar-shop-addr { font-size: 12px; color: var(--muted); }
+    .sidebar-empty { font-size: 13px; color: var(--muted); text-align: center; padding: 12px 0; }
+    .sidebar-item { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; gap: 8px; }
+    .sidebar-item-name { flex: 1; }
+    .sidebar-item-price { font-weight: 700; white-space: nowrap; }
+    hr.sidebar-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+    .sidebar-total { display: flex; justify-content: space-between; font-weight: 700; font-size: 15px; }
+
+    /* Success / Confirmation screen */
+    .success-screen { display: none; max-width: 520px; margin: 0 auto; padding: 32px 16px 48px; }
+    .success-screen.show { display: block; }
+    .success-check { width: 72px; height: 72px; border-radius: 50%; background: #d1fae5; border: 3px solid #059669; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 34px; }
+    .success-title { font-size: 26px; font-weight: 800; margin-bottom: 6px; text-align: center; }
+    .success-sub   { font-size: 15px; color: var(--muted); margin-bottom: 20px; text-align: center; }
+    .success-ref   { display: inline-block; background: var(--accent-light); border: 1px solid #e0b0b0; border-radius: 8px; padding: 8px 18px; font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 24px; }
+    .success-card  { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-bottom: 16px; }
+    .success-card-header { background: var(--dark); color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; }
+    .success-rows  { padding: 4px 0; }
+    .success-row   { display: flex; justify-content: space-between; align-items: center; padding: 11px 20px; border-bottom: 1px solid #f5f5f5; font-size: 14px; gap: 12px; }
+    .success-row:last-child { border-bottom: none; }
+    .success-row-label { color: var(--muted); font-size: 13px; flex-shrink: 0; }
+    .success-row-val   { font-weight: 600; text-align: right; }
+    .notif-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .notif-badge { display: flex; align-items: center; gap: 10px; background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; font-size: 13px; }
+    .notif-badge-icon { font-size: 20px; flex-shrink: 0; }
+    .notif-badge-text { font-weight: 600; }
+    .notif-badge-sub  { font-size: 12px; color: var(--muted); }
+    .success-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-cal { display: inline-flex; align-items: center; gap: 6px; padding: 12px 20px; background: #1a1a1a; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s; text-decoration: none; }
+    .btn-cal:hover { background: #333; }
+
+    /* Spinner */
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error message */
+    .error-msg { background: #fef0f0; color: #c0392b; border: 1px solid #f5c6c6; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; display: none; }
+    .error-msg.show { display: block; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="logo">
+    <span class="logo-icon">✂</span>
+    <div>
+      <div class="logo-text">Gents Barber Shop</div>
+      <div class="logo-sub">Hampton, NH</div>
+    </div>
+  </div>
+  <div class="header-addr">893 Lafayette Road, Hampton, NH</div>
+</header>
+
+<div class="layout" id="main-layout">
+  <!-- Left: booking flow -->
+  <main>
+    <!-- Steps -->
+    <div class="steps-bar">
+      <div class="step-tab active" id="tab-1"><span class="step-num">Step 1</span>Services</div>
+      <div class="step-tab"        id="tab-2"><span class="step-num">Step 2</span>Barber</div>
+      <div class="step-tab"        id="tab-3"><span class="step-num">Step 3</span>Date &amp; Time</div>
+      <div class="step-tab"        id="tab-4"><span class="step-num">Step 4</span>Confirm</div>
+    </div>
+
+    <!-- Step 1: Services -->
+    <div class="step-panel active" id="step-1">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Choose a Service</div>
+          <div class="card-sub">Select one service to book your appointment</div>
+        </div>
+        <div id="services-list">
+          <!-- Populated by JS -->
+        </div>
+        <div class="nav-row" style="justify-content:flex-end">
+          <button class="btn btn-primary" id="btn-1-next" disabled onclick="goStep(2)">Next &rarr;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Barber -->
+    <div class="step-panel" id="step-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Choose Your Barber</div>
+          <div class="card-sub">Select a barber or choose "Any Available"</div>
+        </div>
+        <div class="stylist-grid" id="stylist-grid">
+          <!-- Populated by JS -->
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-secondary" onclick="goStep(1)">&larr; Back</button>
+          <button class="btn btn-primary" id="btn-2-next" disabled onclick="goStep(3)">Next &rarr;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Date & Time -->
+    <div class="step-panel" id="step-3">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Pick a Date &amp; Time</div>
+          <div class="card-sub">Available slots for your selected barber</div>
+        </div>
+        <div class="date-row">
+          <label for="date-picker">Date</label>
+          <input type="date" id="date-picker" class="date-input" onchange="loadSlots()">
+        </div>
+        <div class="slots-section">
+          <div class="slots-label">Available Times</div>
+          <div class="slots-grid" id="slots-grid">
+            <div class="no-slots">Select a date above to see available times.</div>
+          </div>
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-secondary" onclick="goStep(2)">&larr; Back</button>
+          <button class="btn btn-primary" id="btn-3-next" disabled onclick="goStep(4)">Next &rarr;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Contact + Confirm -->
+    <div class="step-panel" id="step-4">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Your Information</div>
+          <div class="card-sub">We'll send your confirmation to your email</div>
+        </div>
+        <div class="form-body">
+          <!-- Booking summary -->
+          <div class="confirm-summary" id="confirm-summary"></div>
+
+          <div class="error-msg" id="form-error"></div>
+
+          <div class="field required">
+            <label>Full Name</label>
+            <input type="text" id="f-name" placeholder="John Smith" required>
+          </div>
+          <div class="field required">
+            <label>Email Address</label>
+            <input type="email" id="f-email" placeholder="you@example.com" required>
+          </div>
+          <div class="field">
+            <label>Phone Number</label>
+            <input type="tel" id="f-phone" placeholder="(603) 555-0100">
+          </div>
+          <div class="field">
+            <label>Notes for your barber</label>
+            <textarea id="f-notes" placeholder="Any requests or special instructions..."></textarea>
+          </div>
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-secondary" onclick="goStep(3)">&larr; Back</button>
+          <button class="btn btn-primary" id="btn-submit" onclick="submitBooking()">
+            Confirm Booking
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success / Confirmation -->
+    <div class="success-screen" id="success-screen">
+      <div class="success-check">✓</div>
+      <div class="success-title">Booking Confirmed!</div>
+      <div class="success-sub">Your appointment at Gents Barber Shop is all set.</div>
+      <div class="success-ref" id="success-ref">Booking #—</div>
+
+      <div class="success-card">
+        <div class="success-card-header">✂ Appointment Details</div>
+        <div class="success-rows" id="success-rows"></div>
+      </div>
+
+      <div class="notif-row" id="notif-row"></div>
+
+      <div class="success-actions">
+        <button class="btn-cal" id="btn-cal" onclick="downloadCalendar()">📅 Add to Calendar</button>
+        <button class="btn btn-primary" onclick="location.reload()">Book Another</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Right: summary -->
+  <aside class="sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-shop">
+        <div class="sidebar-shop-icon">✂</div>
+        <div>
+          <div class="sidebar-shop-name">Gents Barber Shop</div>
+          <div class="sidebar-shop-addr">893 Lafayette Rd, Hampton, NH</div>
+        </div>
+      </div>
+      <div id="sidebar-content"><div class="sidebar-empty">No service selected yet.</div></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+const state = {
+  services: [],
+  stylists: [],
+  selectedService: null,  // { id, name, price_cents, duration_min }
+  selectedStylist: null,  // { id, name } or { id: null, name: 'Any Available' }
+  selectedDate: null,
+  selectedTime: null,
+};
+
+// ── Helpers ───────────────────────────────────────────────
+const fmt = cents => `$${(cents / 100).toFixed(0)}`;
+const fmtTime = t => {
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
+};
+const fmtDate = d => {
+  const [y, mo, day] = d.split('-').map(Number);
+  return new Date(y, mo - 1, day).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+};
+
+// ── Init ──────────────────────────────────────────────────
+async function init() {
+  const [services, stylists] = await Promise.all([
+    fetch('/api/services').then(r => r.json()),
+    fetch('/api/stylists').then(r => r.json()),
+  ]);
+  state.services = services;
+  state.stylists = stylists;
+  renderServices();
+  renderStylists();
+  // Set min date to today
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('date-picker').min = today;
+  document.getElementById('date-picker').value = today;
+}
+
+// ── Step navigation ───────────────────────────────────────
+function goStep(n) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.step-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`step-${n}`).classList.add('active');
+  document.getElementById(`tab-${n}`).classList.add('active');
+  // Mark previous steps done
+  for (let i = 1; i < n; i++) document.getElementById(`tab-${i}`).classList.add('done');
+  for (let i = n; i <= 4; i++) document.getElementById(`tab-${i}`).classList.remove('done');
+  if (n === 4) renderConfirmSummary();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Step 1: Services ──────────────────────────────────────
+function renderServices() {
+  const list = document.getElementById('services-list');
+  list.innerHTML = `<div class="svc-category">Haircuts</div>` +
+    state.services.map(s => `
+      <div class="svc-item" id="svc-${s.id}" onclick="selectService(${s.id})">
+        <div class="svc-check"></div>
+        <div class="svc-info">
+          <div class="svc-name">${escHtml(s.name)}</div>
+          <div class="svc-meta">${s.duration_min} min</div>
+        </div>
+        <div class="svc-price">${fmt(s.price_cents)}</div>
+      </div>
+    `).join('');
+}
+
+function selectService(id) {
+  state.selectedService = state.services.find(s => s.id === id);
+  document.querySelectorAll('.svc-item').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`svc-${id}`).classList.add('selected');
+  document.getElementById('btn-1-next').disabled = false;
+  updateSidebar();
+}
+
+// ── Step 2: Stylists ──────────────────────────────────────
+function renderStylists() {
+  const grid = document.getElementById('stylist-grid');
+  const avatars = ['💈','✂','🪒','💈'];
+  const anyCard = `
+    <div class="stylist-card" id="stylist-any" onclick="selectStylist(null)">
+      <div class="stylist-avatar">👥</div>
+      <div class="stylist-name">Any Available</div>
+      <div class="stylist-bio">First available barber</div>
+    </div>`;
+  const cards = state.stylists.map((s, i) => `
+    <div class="stylist-card" id="stylist-${s.id}" onclick="selectStylist(${s.id})">
+      <div class="stylist-avatar">${s.photo_url ? `<img src="${s.photo_url}" alt="${escHtml(s.name)}">` : avatars[i % avatars.length]}</div>
+      <div class="stylist-name">${escHtml(s.name)}</div>
+      <div class="stylist-bio">${escHtml(s.bio || 'Professional barber')}</div>
+    </div>`).join('');
+  grid.innerHTML = anyCard + cards;
+}
+
+function selectStylist(id) {
+  state.selectedStylist = id === null
+    ? { id: null, name: 'Any Available' }
+    : state.stylists.find(s => s.id === id);
+  document.querySelectorAll('.stylist-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(id === null ? 'stylist-any' : `stylist-${id}`).classList.add('selected');
+  document.getElementById('btn-2-next').disabled = false;
+  updateSidebar();
+}
+
+// ── Step 3: Date & Time ───────────────────────────────────
+async function loadSlots() {
+  const date = document.getElementById('date-picker').value;
+  if (!date) return;
+  state.selectedDate = date;
+  state.selectedTime = null;
+  document.getElementById('btn-3-next').disabled = true;
+
+  const stylistId = state.selectedStylist?.id;
+  const url = `/api/availability?date=${date}${stylistId ? `&stylist_id=${stylistId}` : ''}`;
+  const { slots } = await fetch(url).then(r => r.json());
+
+  const grid = document.getElementById('slots-grid');
+  if (!slots.length) {
+    grid.innerHTML = `<div class="no-slots">No available times on this date. Please choose another day.</div>`;
+    return;
+  }
+  grid.innerHTML = slots.map(t => `
+    <button class="slot-btn" id="slot-${t}" onclick="selectSlot('${t}')">${fmtTime(t)}</button>
+  `).join('');
+}
+
+function selectSlot(t) {
+  state.selectedTime = t;
+  document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`slot-${t}`).classList.add('selected');
+  document.getElementById('btn-3-next').disabled = false;
+  updateSidebar();
+}
+
+// ── Step 4: Confirm ───────────────────────────────────────
+function renderConfirmSummary() {
+  const s = state;
+  document.getElementById('confirm-summary').innerHTML = `
+    <div class="confirm-row"><span class="confirm-label">Service</span><span class="confirm-val">${escHtml(s.selectedService?.name || '—')}</span></div>
+    <div class="confirm-row"><span class="confirm-label">Barber</span><span class="confirm-val">${escHtml(s.selectedStylist?.name || '—')}</span></div>
+    <div class="confirm-row"><span class="confirm-label">Date</span><span class="confirm-val">${s.selectedDate ? fmtDate(s.selectedDate) : '—'}</span></div>
+    <div class="confirm-row"><span class="confirm-label">Time</span><span class="confirm-val">${s.selectedTime ? fmtTime(s.selectedTime) : '—'}</span></div>
+    <div class="confirm-row"><span class="confirm-label">Price</span><span class="confirm-val">${s.selectedService ? fmt(s.selectedService.price_cents) : '—'}</span></div>
+  `;
+}
+
+async function submitBooking() {
+  const name  = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const notes = document.getElementById('f-notes').value.trim();
+  const errEl = document.getElementById('form-error');
+
+  if (!name || !email) {
+    errEl.textContent = 'Please fill in your name and email address.';
+    errEl.classList.add('show'); return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = 'Please enter a valid email address.';
+    errEl.classList.add('show'); return;
+  }
+  errEl.classList.remove('show');
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Booking...';
+
+  try {
+    const res = await fetch('/api/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_name: name,
+        customer_email: email,
+        customer_phone: phone,
+        stylist_id: state.selectedStylist?.id || null,
+        service_id: state.selectedService.id,
+        appointment_date: state.selectedDate,
+        appointment_time: state.selectedTime,
+        notes,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Booking failed');
+
+    // Show confirmation screen
+    document.getElementById('main-layout').style.display = 'none';
+    document.getElementById('success-screen').classList.add('show');
+    window._lastBooking = { ...data, customer_name: name, customer_email: email, customer_phone: phone };
+
+    document.getElementById('success-ref').textContent = `Booking #${data.id}`;
+
+    const rows = [
+      ['Service', escHtml(data.service_name)],
+      ['Barber',  escHtml(data.stylist_name || 'Any Available')],
+      ['Date',    fmtDate(data.appointment_date)],
+      ['Time',    fmtTime(data.appointment_time)],
+      ['Price',   `$${(data.price_cents/100).toFixed(0)}`],
+      ['Name',    escHtml(name)],
+      ['Email',   escHtml(email)],
+    ];
+    document.getElementById('success-rows').innerHTML = rows.map(([l,v]) =>
+      `<div class="success-row"><span class="success-row-label">${l}</span><span class="success-row-val">${v}</span></div>`
+    ).join('');
+
+    const notifs = [
+      `<div class="notif-badge"><span class="notif-badge-icon">📧</span><div><div class="notif-badge-text">Confirmation email sent</div><div class="notif-badge-sub">${escHtml(email)}</div></div></div>`,
+    ];
+    if (phone) notifs.push(
+      `<div class="notif-badge"><span class="notif-badge-icon">📱</span><div><div class="notif-badge-text">SMS confirmation sent</div><div class="notif-badge-sub">${escHtml(phone)}</div></div></div>`
+    );
+    document.getElementById('notif-row').innerHTML = notifs.join('');
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Confirm Booking';
+  }
+}
+
+// ── Calendar (.ics) download ──────────────────────────────
+function buildICS(b) {
+  const [y,mo,d] = b.appointment_date.split('-').map(Number);
+  const [h,m]    = b.appointment_time.split(':').map(Number);
+  const start    = new Date(y, mo-1, d, h, m);
+  const end      = new Date(start.getTime() + (b.duration_min||30)*60000);
+  const pad      = n => String(n).padStart(2,'0');
+  const icsDate  = dt => `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+  const now      = icsDate(new Date());
+  const desc     = `Booking #${b.id}\\nService: ${b.service_name}\\nBarber: ${b.stylist_name||'To be assigned'}\\nPrice: $${(b.price_cents/100).toFixed(0)}`;
+  return [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Gents Barber Shop//Booking//EN',
+    'CALSCALE:GREGORIAN','METHOD:REQUEST','BEGIN:VEVENT',
+    `UID:gents-booking-${b.id}@gentsbarbershop.com`,
+    `DTSTAMP:${now}`,`DTSTART:${icsDate(start)}`,`DTEND:${icsDate(end)}`,
+    `SUMMARY:${b.service_name} at Gents Barber Shop`,
+    'LOCATION:893 Lafayette Road\\, Hampton\\, New Hampshire',
+    `DESCRIPTION:${desc}`,
+    'STATUS:CONFIRMED','SEQUENCE:0',
+    'END:VEVENT','END:VCALENDAR',
+  ].join('\r\n');
+}
+function downloadCalendar() {
+  const b   = window._lastBooking; if (!b) return;
+  const ics = buildICS(b);
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const a   = document.createElement('a');
+  a.href    = URL.createObjectURL(blob);
+  a.download = `gents-booking-${b.id}.ics`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Sidebar ───────────────────────────────────────────────
+function updateSidebar() {
+  const s = state;
+  let html = '';
+  if (s.selectedService) {
+    html += `<div class="sidebar-item"><span class="sidebar-item-name">${escHtml(s.selectedService.name)}</span><span class="sidebar-item-price">${fmt(s.selectedService.price_cents)}</span></div>`;
+    html += `<div class="sidebar-item"><span style="color:var(--muted);font-size:12px">${s.selectedService.duration_min} min</span></div>`;
+  }
+  if (s.selectedStylist) {
+    html += `<hr class="sidebar-divider"><div class="sidebar-item"><span class="sidebar-item-name" style="color:var(--muted)">Barber</span><span class="sidebar-item-price">${escHtml(s.selectedStylist.name)}</span></div>`;
+  }
+  if (s.selectedDate && s.selectedTime) {
+    html += `<div class="sidebar-item"><span class="sidebar-item-name" style="color:var(--muted)">Date</span><span class="sidebar-item-price" style="font-size:12px">${fmtDate(s.selectedDate)}</span></div>`;
+    html += `<div class="sidebar-item"><span class="sidebar-item-name" style="color:var(--muted)">Time</span><span class="sidebar-item-price">${fmtTime(s.selectedTime)}</span></div>`;
+  }
+  if (s.selectedService) {
+    html += `<hr class="sidebar-divider"><div class="sidebar-total"><span>Total</span><span>${fmt(s.selectedService.price_cents)}</span></div>`;
+  }
+  document.getElementById('sidebar-content').innerHTML = html || '<div class="sidebar-empty">No service selected yet.</div>';
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>
