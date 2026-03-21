@@ -35,6 +35,12 @@
     }
     .nav-book:hover { background: #b8963e !important; }
     .nav-staff { color: #c9a95a !important; font-size: 12px !important; }
+    /* ── Burger ── */
+    .nav-burger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 4px; }
+    .nav-burger span { display: block; height: 2px; background: #f0e0d0; border-radius: 2px; transition: all .25s; }
+    .nav-burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-burger.open span:nth-child(2) { opacity: 0; }
+    .nav-burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
     /* ── HERO ── */
     .hero {
@@ -214,27 +220,38 @@
     .footer-sep { margin: 0 8px; opacity: .4; }
 
     /* ── RESPONSIVE ── */
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
       nav { padding: 0 16px; height: 60px; }
       .nav-logo-img { height: 44px; }
-      .nav-links a { padding: 5px 10px; font-size: 12px; }
       section { padding: 52px 16px; }
+      .nav-burger { display: flex; }
+      .nav-links {
+        display: none; flex-direction: column; align-items: stretch; gap: 4px;
+        position: absolute; top: 60px; left: 0; right: 0;
+        background: #6b1212; padding: 12px 16px 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,.4); z-index: 99;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links a { padding: 10px 14px; font-size: 14px; border-radius: 8px; }
     }
   </style>
 </head>
 <body>
 
 <!-- ── NAVIGATION ── -->
-<nav>
+<nav style="position:relative">
   <a class="nav-logo" href="/">
     <img class="nav-logo-img" src="/images/gents/hero.jpg" alt="Gents Barbershop">
     <div class="nav-logo-sub">Hampton, NH</div>
   </a>
-  <div class="nav-links">
-    <a href="#services">Services</a>
-    <a href="#gallery">Gallery</a>
-    <a href="#hours">Hours</a>
-    <a href="#contact">Contact</a>
+  <button class="nav-burger" id="nav-burger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-links" id="nav-links">
+    <a href="#services" onclick="closeMenu()">Services</a>
+    <a href="#gallery" onclick="closeMenu()">Gallery</a>
+    <a href="#hours" onclick="closeMenu()">Hours</a>
+    <a href="#contact" onclick="closeMenu()">Contact</a>
     <a href="/booking" class="nav-book">Book Now</a>
     <a href="/login.html" class="nav-staff">Staff ↗</a>
   </div>
@@ -449,5 +466,15 @@
   </div>
 </footer>
 
+<script>
+function toggleMenu() {
+  document.getElementById('nav-burger').classList.toggle('open');
+  document.getElementById('nav-links').classList.toggle('open');
+}
+function closeMenu() {
+  document.getElementById('nav-burger').classList.remove('open');
+  document.getElementById('nav-links').classList.remove('open');
+}
+</script>
 </body>
 </html>

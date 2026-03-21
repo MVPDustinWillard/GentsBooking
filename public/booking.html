@@ -40,7 +40,25 @@
     .nav-links a:hover { background: rgba(255,255,255,.12); color: #fff; }
     .nav-home { border: 1px solid rgba(255,255,255,.25) !important; }
     .nav-staff { color: var(--gold) !important; font-size: 12px !important; }
-    @media (max-width: 600px) { nav { padding: 0 16px; } .nav-logo-img { height: 40px; } }
+    /* ── Burger ── */
+    .nav-burger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 4px; }
+    .nav-burger span { display: block; height: 2px; background: #f0e0d0; border-radius: 2px; transition: all .25s; }
+    .nav-burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-burger.open span:nth-child(2) { opacity: 0; }
+    .nav-burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+    @media (max-width: 600px) {
+      nav { padding: 0 16px; }
+      .nav-logo-img { height: 40px; }
+      .nav-burger { display: flex; }
+      .nav-links {
+        display: none; flex-direction: column; align-items: stretch; gap: 4px;
+        position: absolute; top: 72px; left: 0; right: 0;
+        background: var(--maroon); padding: 12px 16px 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,.4); z-index: 199;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links a { padding: 10px 14px; font-size: 14px; }
+    }
 
     /* ── HERO BANNER ── */
     .booking-hero {
@@ -344,11 +362,14 @@
 <body>
 
 <!-- ── NAV ── -->
-<nav>
+<nav style="position:relative">
   <a class="nav-logo" href="/">
     <img class="nav-logo-img" src="/images/gents/hero.jpg" alt="Gents Barbershop">
   </a>
-  <div class="nav-links">
+  <button class="nav-burger" id="nav-burger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-links" id="nav-links">
     <a href="/" class="nav-home">← Home</a>
     <a href="/login.html" class="nav-staff">Staff ↗</a>
   </div>
@@ -747,6 +768,11 @@ function escHtml(str) {
 }
 
 init();
+
+function toggleMenu() {
+  document.getElementById('nav-burger').classList.toggle('open');
+  document.getElementById('nav-links').classList.toggle('open');
+}
 </script>
 </body>
 </html>
