@@ -931,10 +931,10 @@ async function updateBooking(id, status) {
   loadBookings();
 }
 
-async function assignBarber(bookingId, stylistId) {
+async function assignBarber(bookingId, barberId) {
   await fetch(`/api/admin/bookings/${bookingId}`,{
     method:'PATCH',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({stylist_id: stylistId ? parseInt(stylistId) : null})
+    body:JSON.stringify({stylist_id: barberId ? parseInt(barberId) : null})
   });
   // No full reload needed — just update visually
 }
