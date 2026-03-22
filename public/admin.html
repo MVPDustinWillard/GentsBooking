@@ -141,7 +141,20 @@
     .alert-success{background:#f0faf4;color:#1a7a4a;border:1px solid #b0d8c0}
     .hint{font-size:12px;color:#999;margin-top:3px}
 
-    @media(max-width:700px){.sidebar{display:none}.main{margin-left:0;overflow-x:hidden}}
+    /* ── Hamburger ── */
+    #hamburger{display:none;position:fixed;top:12px;left:12px;z-index:200;background:var(--accent);border:none;border-radius:8px;width:40px;height:40px;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+    #hamburger span{display:block;width:20px;height:2px;background:#fff;border-radius:2px;transition:all .2s}
+    #hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+    #hamburger.open span:nth-child(2){opacity:0}
+    #hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+    #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+    @media(max-width:700px){
+      #hamburger{display:flex}
+      .sidebar{display:none;position:fixed;z-index:150}
+      .sidebar.open{display:flex}
+      .main{margin-left:0;overflow-x:hidden}
+      .topbar{padding-left:64px}
+    }
     .spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:5px}
     @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -210,6 +223,12 @@
   </style>
 </head>
 <body>
+
+<!-- ── Mobile hamburger ── -->
+<button id="hamburger" aria-label="Toggle navigation" onclick="toggleSidebar()">
+  <span></span><span></span><span></span>
+</button>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <!-- ── Sidebar ── -->
 <nav class="sidebar">
@@ -864,6 +883,21 @@ async function init() {
   loadBookings();
 }
 
+// ── Mobile sidebar toggle ────────────────────────────────────
+function toggleSidebar() {
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  const hb = document.getElementById('hamburger');
+  const open = sb.classList.toggle('open');
+  hb.classList.toggle('open', open);
+  ov.style.display = open ? 'block' : 'none';
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('hamburger').classList.remove('open');
+  document.getElementById('sidebar-overlay').style.display = 'none';
+}
+
 // ── Views ──────────────────────────────────────────────────
 function showView(view, title, el) {
   currentView = view;
@@ -872,6 +906,7 @@ function showView(view, title, el) {
   document.getElementById(`view-${view}`).classList.add('active');
   if (el) el.classList.add('active');
   document.getElementById('view-title').textContent = title;
+  closeSidebar();
   const dateEl = document.getElementById('f-date');
   if (view === 'today') {
     dateEl.value = localDateStr();
