@@ -12,8 +12,8 @@ module.exports = {
   from: gmailUser ? `"Gents Barber Shop" <${gmailUser}>` : '"Gents Barber Shop" <noreply@gentsbarbershop.com>',
   smtp: {
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
+    port: 465,
+    secure: true,
     family: 4,
     auth: {
       user: gmailUser,
