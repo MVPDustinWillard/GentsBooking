@@ -444,8 +444,12 @@
           <label for="date-picker">Date</label>
           <input type="date" id="date-picker" class="date-input" onchange="loadSlots()">
         </div>
-        <div style="padding:0 22px 4px;font-size:12px;color:#888;line-height:1.6" id="hours-hint">
-          Hours: Mon–Tue &amp; Fri 10AM–6PM &nbsp;·&nbsp; Thu 10AM–5PM &nbsp;·&nbsp; Sat–Sun 9AM–3PM &nbsp;·&nbsp; <strong>Wed Closed</strong>
+        <div style="padding:0 22px 10px;font-size:12px;color:#888;line-height:1.8;background:var(--cream);border-bottom:1px solid var(--border)" id="hours-hint">
+          <span style="font-weight:700;color:var(--dark)">Shop Hours:</span>
+          Mon–Tue &amp; Fri: 10AM–6PM &nbsp;·&nbsp;
+          Thu: 10AM–5PM &nbsp;·&nbsp;
+          Sat–Sun: 9AM–3PM &nbsp;·&nbsp;
+          <span style="color:var(--accent);font-weight:700">Wed: Closed</span>
         </div>
         <div class="slots-section">
           <div class="slots-label">Available Times</div>
@@ -529,6 +533,9 @@
     <button class="btn-cal" id="btn-cal" onclick="downloadCalendar()">📅 Add to Calendar</button>
     <button class="btn btn-primary" onclick="location.reload()">Book Another</button>
   </div>
+  <div style="text-align:center;margin-top:20px">
+    <a href="/" style="font-size:13px;color:var(--muted);text-decoration:none">← Back to Gents Barbershop Home</a>
+  </div>
 </div>
 
 <script>
@@ -585,12 +592,12 @@ function goStep(n) {
 function renderServices() {
   const list = document.getElementById('services-list');
   list.innerHTML = `<div class="svc-category">Available Services</div>` +
-    state.services.map(s => `
+    state.services.map((s, i) => `
       <div class="svc-item" id="svc-${s.id}" onclick="selectService(${s.id})">
         <div class="svc-check"></div>
         <div class="svc-info">
-          <div class="svc-name">${escHtml(s.name)}</div>
-          <div class="svc-meta">${s.duration_min} min</div>
+          <div class="svc-name">${escHtml(s.name)}${i === 0 ? ' <span style="display:inline-block;background:#c9a95a;color:#3a0a0a;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;margin-left:6px;vertical-align:middle;letter-spacing:.5px">POPULAR</span>' : ''}</div>
+          <div class="svc-meta">${s.duration_min} min${s.description ? ` · ${escHtml(s.description)}` : ''}</div>
         </div>
         <div class="svc-price">${fmt(s.price_cents)}</div>
       </div>
@@ -657,9 +664,19 @@ async function loadSlots() {
     grid.innerHTML = `<div class="no-slots">No available times on this date. Please choose another day.</div>`;
     return;
   }
-  grid.innerHTML = slots.map(t => `
-    <button class="slot-btn" id="slot-${t}" onclick="selectSlot('${t}')">${fmtTime(t)}</button>
-  `).join('');
+  // Group slots into AM and PM
+  const amSlots = slots.filter(t => parseInt(t.split(':')[0]) < 12);
+  const pmSlots = slots.filter(t => parseInt(t.split(':')[0]) >= 12);
+  let slotHtml = '';
+  if (amSlots.length) {
+    slotHtml += `<div style="grid-column:1/-1;font-size:10px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:2px">Morning</div>`;
+    slotHtml += amSlots.map(t => `<button class="slot-btn" id="slot-${t}" onclick="selectSlot('${t}')">${fmtTime(t)}</button>`).join('');
+  }
+  if (pmSlots.length) {
+    slotHtml += `<div style="grid-column:1/-1;font-size:10px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;margin-top:10px;margin-bottom:2px">Afternoon</div>`;
+    slotHtml += pmSlots.map(t => `<button class="slot-btn" id="slot-${t}" onclick="selectSlot('${t}')">${fmtTime(t)}</button>`).join('');
+  }
+  grid.innerHTML = slotHtml;
 }
 
 function selectSlot(t) {
@@ -785,6 +802,19 @@ function escHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// Phone formatting
+document.addEventListener('DOMContentLoaded', () => {
+  const phoneInput = document.getElementById('f-phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', e => {
+      let v = e.target.value.replace(/\D/g,'');
+      if (v.length >= 6) v = `(${v.slice(0,3)}) ${v.slice(3,6)}-${v.slice(6,10)}`;
+      else if (v.length >= 3) v = `(${v.slice(0,3)}) ${v.slice(3)}`;
+      e.target.value = v;
+    });
+  }
+});
 
 init();
 
