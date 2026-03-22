@@ -16,10 +16,12 @@ module.exports = {
   },
 
   // ── SMS (Twilio) ────────────────────────────────────────────────────────────
+  // Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER in .env (local)
+  // or as Railway environment variables for production.
   sms: {
-    enabled: false,             // Set to true to send real SMS messages
-    accountSid: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-    authToken:  'your_auth_token',
-    fromNumber: '+1xxxxxxxxxx', // Your Twilio phone number (e.g. +16035550100)
+    enabled: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_FROM_NUMBER),
+    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    authToken:  process.env.TWILIO_AUTH_TOKEN  || '',
+    fromNumber: process.env.TWILIO_FROM_NUMBER || '',
   },
 };

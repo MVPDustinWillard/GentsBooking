@@ -1,3 +1,6 @@
+// Load .env in development (ignored if not present)
+try { require('dotenv').config(); } catch(_) {}
+
 const express    = require('express');
 const Database   = require('better-sqlite3');
 const bcrypt     = require('bcryptjs');
@@ -192,31 +195,44 @@ async function sendBookingConfirmation(booking) {
 
   // ── Email ────────────────────────────────────────────────────────────────
   const html = `
-    <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
-      <div style="background:#222;padding:24px;text-align:center;border-radius:8px 8px 0 0">
-        <h1 style="color:#fff;margin:0;font-size:22px">✂ Gents Barber Shop</h1>
-        <p style="color:#aaa;margin:6px 0 0;font-size:13px">893 Lafayette Road, Hampton, NH</p>
+    <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;background:#f5f0e8">
+      <div style="background:linear-gradient(135deg,#6b1212,#8B1A1A);padding:32px 28px;text-align:center;border-radius:12px 12px 0 0;border-bottom:4px solid #c9a95a">
+        <div style="font-size:32px;margin-bottom:10px">✂</div>
+        <h1 style="color:#fff;margin:0;font-size:24px;font-weight:700;letter-spacing:0.5px">Gents Barber Shop</h1>
+        <p style="color:#e8c888;margin:6px 0 0;font-size:13px;letter-spacing:0.3px">893 Lafayette Road · Hampton, New Hampshire</p>
       </div>
-      <div style="background:#fff;border:1px solid #e4e4e4;border-top:none;padding:28px;border-radius:0 0 8px 8px">
-        <h2 style="margin:0 0 6px;color:#1a1a1a">You're booked, ${booking.customer_name.split(' ')[0]}!</h2>
-        <p style="color:#666;margin:0 0 24px;font-size:14px">Your appointment is confirmed. A calendar invite is attached — see you soon!</p>
-        <table style="width:100%;border-collapse:collapse;font-size:14px">
-          <tr><td style="padding:8px 0;color:#888;width:40%">Booking #</td><td style="padding:8px 0;font-weight:700">#${booking.id}</td></tr>
-          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Service</td><td style="padding:8px 0;font-weight:600">${booking.service_name}</td></tr>
-          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Barber</td><td style="padding:8px 0">${barber}</td></tr>
-          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Date</td><td style="padding:8px 0">${fmtDateFn(booking.appointment_date)}</td></tr>
-          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Time</td><td style="padding:8px 0">${fmtTimeFn(booking.appointment_time)}</td></tr>
-          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Price</td><td style="padding:8px 0;font-weight:700">${price}</td></tr>
-        </table>
+      <div style="background:#fff;border:1px solid #e4ddd0;border-top:none;padding:32px 28px;border-radius:0 0 12px 12px">
+        <h2 style="margin:0 0 8px;color:#1a0707;font-size:22px">You're all set, ${booking.customer_name.split(' ')[0]}! 🎉</h2>
+        <p style="color:#666;margin:0 0 28px;font-size:14px;line-height:1.7;font-family:sans-serif">Your appointment is confirmed and a calendar invite is attached. We look forward to seeing you!</p>
+        <div style="background:#f5f0e8;border-radius:10px;border:1px solid #e4ddd0;overflow:hidden;margin-bottom:24px">
+          <div style="background:#1a0707;padding:12px 18px">
+            <span style="color:#c9a95a;font-size:13px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase">✂ Appointment Details</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:14px;font-family:sans-serif">
+            <tr><td style="padding:11px 18px;color:#888;width:40%;border-bottom:1px solid #ede8e0">Booking #</td><td style="padding:11px 18px;font-weight:700;color:#8B1A1A;border-bottom:1px solid #ede8e0">#${booking.id}</td></tr>
+            <tr><td style="padding:11px 18px;color:#888;border-bottom:1px solid #ede8e0">Service</td><td style="padding:11px 18px;font-weight:600;color:#1a0707;border-bottom:1px solid #ede8e0">${booking.service_name}</td></tr>
+            <tr><td style="padding:11px 18px;color:#888;border-bottom:1px solid #ede8e0">Barber</td><td style="padding:11px 18px;color:#1a0707;border-bottom:1px solid #ede8e0">${barber}</td></tr>
+            <tr><td style="padding:11px 18px;color:#888;border-bottom:1px solid #ede8e0">Date</td><td style="padding:11px 18px;font-weight:600;color:#1a0707;border-bottom:1px solid #ede8e0">${fmtDateFn(booking.appointment_date)}</td></tr>
+            <tr><td style="padding:11px 18px;color:#888;border-bottom:1px solid #ede8e0">Time</td><td style="padding:11px 18px;font-weight:700;color:#1a0707;border-bottom:1px solid #ede8e0">${fmtTimeFn(booking.appointment_time)}</td></tr>
+            <tr><td style="padding:11px 18px;color:#888">Price</td><td style="padding:11px 18px;font-weight:800;color:#8B1A1A;font-size:16px">${price}</td></tr>
+          </table>
+        </div>
         ${booking.cancel_token ? `
-        <div style="margin:24px 0 0;padding:16px;background:#f9f4f4;border:1px solid #e4c4c4;border-radius:8px;text-align:center">
-          <p style="font-size:13px;color:#666;margin:0 0 10px">Need to cancel? You can do so online (2-hour notice required).</p>
+        <div style="margin:0 0 24px;padding:18px;background:#fdf5f5;border:1px solid #e8c0c0;border-radius:10px;text-align:center">
+          <p style="font-size:13px;color:#666;margin:0 0 12px;font-family:sans-serif">Need to reschedule or cancel? You can manage your booking online (2-hour notice required).</p>
           <a href="${BASE_URL}/manage-booking/${booking.cancel_token}"
-             style="display:inline-block;padding:10px 24px;background:#8B1A1A;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">
-            Manage My Booking
+             style="display:inline-block;padding:11px 28px;background:#8B1A1A;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;font-family:sans-serif">
+            Manage My Booking →
           </a>
         </div>` : ''}
-        <p style="margin:16px 0 0;font-size:12px;color:#aaa;text-align:center">893 Lafayette Road, Hampton, New Hampshire · 603-601-8615</p>
+        <div style="text-align:center;padding-top:16px;border-top:1px solid #e4ddd0">
+          <p style="font-size:12px;color:#aaa;margin:0;font-family:sans-serif;line-height:1.8">
+            <strong style="color:#8B1A1A">Gents Barber Shop</strong><br>
+            893 Lafayette Road · Hampton, New Hampshire 03842<br>
+            <a href="tel:6036018615" style="color:#8B1A1A;text-decoration:none">603-601-8615</a> ·
+            <a href="mailto:shellysgents@gmail.com" style="color:#8B1A1A;text-decoration:none">shellysgents@gmail.com</a>
+          </p>
+        </div>
       </div>
     </div>`;
 
@@ -264,23 +280,42 @@ async function sendBookingConfirmation(booking) {
 // ── Reminder messages ──────────────────────────────────────────────────────
 async function sendReminderMessage(booking, hoursAhead) {
   const barber  = booking.stylist_name || 'your barber';
-  const subject = `Reminder: Your appointment at Gents Barber Shop`;
+  const subject = `Reminder: Your Gents appointment is in ${hoursAhead} hour${hoursAhead>1?'s':''}`;
   const html = `
-    <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
-      <div style="background:#222;padding:24px;text-align:center;border-radius:8px 8px 0 0">
-        <h1 style="color:#fff;margin:0;font-size:22px">✂ Gents Barber Shop</h1>
-        <p style="color:#aaa;margin:6px 0 0;font-size:13px">893 Lafayette Road, Hampton, NH</p>
+    <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;background:#f5f0e8">
+      <div style="background:linear-gradient(135deg,#6b1212,#8B1A1A);padding:28px;text-align:center;border-radius:12px 12px 0 0;border-bottom:4px solid #c9a95a">
+        <div style="font-size:28px;margin-bottom:8px">✂</div>
+        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Gents Barber Shop</h1>
+        <p style="color:#e8c888;margin:5px 0 0;font-size:12px;letter-spacing:0.3px">893 Lafayette Road · Hampton, New Hampshire</p>
       </div>
-      <div style="background:#fff;border:1px solid #e4e4e4;border-top:none;padding:28px;border-radius:0 0 8px 8px">
-        <h2 style="margin:0 0 6px;color:#1a1a1a">Appointment Reminder</h2>
-        <p style="color:#666;margin:0 0 24px;font-size:14px">Your appointment is coming up in <strong>${hoursAhead} hour${hoursAhead>1?'s':''}</strong>. We look forward to seeing you!</p>
-        <table style="width:100%;border-collapse:collapse;font-size:14px">
-          <tr><td style="padding:8px 0;color:#888;width:40%">Service</td><td style="padding:8px 0;font-weight:600">${booking.service_name}</td></tr>
-          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Barber</td><td style="padding:8px 0">${barber}</td></tr>
-          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Date</td><td style="padding:8px 0">${fmtDateFn(booking.appointment_date)}</td></tr>
-          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Time</td><td style="padding:8px 0;font-weight:700">${fmtTimeFn(booking.appointment_time)}</td></tr>
-        </table>
-        <p style="margin:24px 0 0;font-size:13px;color:#888">To cancel please call us at your earliest convenience.<br>893 Lafayette Road, Hampton, New Hampshire</p>
+      <div style="background:#fff;border:1px solid #e4ddd0;border-top:none;padding:30px 28px;border-radius:0 0 12px 12px">
+        <h2 style="margin:0 0 8px;color:#1a0707;font-size:20px">⏰ Appointment Reminder</h2>
+        <p style="color:#555;margin:0 0 24px;font-size:14px;line-height:1.7;font-family:sans-serif">
+          Hey ${booking.customer_name.split(' ')[0]}! Just a heads up — your appointment is coming up in
+          <strong style="color:#8B1A1A">${hoursAhead} hour${hoursAhead>1?'s':''}</strong>. We look forward to seeing you!
+        </p>
+        <div style="background:#f5f0e8;border-radius:10px;border:1px solid #e4ddd0;overflow:hidden;margin-bottom:24px">
+          <div style="background:#1a0707;padding:10px 18px">
+            <span style="color:#c9a95a;font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase">Your Appointment</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:14px;font-family:sans-serif">
+            <tr><td style="padding:10px 18px;color:#888;width:40%;border-bottom:1px solid #ede8e0">Service</td><td style="padding:10px 18px;font-weight:600;color:#1a0707;border-bottom:1px solid #ede8e0">${booking.service_name}</td></tr>
+            <tr><td style="padding:10px 18px;color:#888;border-bottom:1px solid #ede8e0">Barber</td><td style="padding:10px 18px;color:#1a0707;border-bottom:1px solid #ede8e0">${barber}</td></tr>
+            <tr><td style="padding:10px 18px;color:#888;border-bottom:1px solid #ede8e0">Date</td><td style="padding:10px 18px;font-weight:600;color:#1a0707;border-bottom:1px solid #ede8e0">${fmtDateFn(booking.appointment_date)}</td></tr>
+            <tr><td style="padding:10px 18px;color:#888">Time</td><td style="padding:10px 18px;font-weight:800;font-size:16px;color:#8B1A1A">${fmtTimeFn(booking.appointment_time)}</td></tr>
+          </table>
+        </div>
+        <div style="background:#fffbf0;border:1px solid #e8dcc0;border-radius:8px;padding:14px 18px;margin-bottom:20px">
+          <p style="font-size:13px;color:#6b5a30;margin:0;font-family:sans-serif;line-height:1.6">
+            📍 <strong>893 Lafayette Road, Hampton, NH</strong> — Easy parking available on Lafayette Road (Rt. 1).
+          </p>
+        </div>
+        <div style="text-align:center;padding-top:16px;border-top:1px solid #e4ddd0">
+          <p style="font-size:12px;color:#aaa;margin:0;font-family:sans-serif;line-height:1.8">
+            Need to cancel? Please call us at <a href="tel:6036018615" style="color:#8B1A1A;text-decoration:none">603-601-8615</a><br>
+            <span style="font-size:11px">Cancellations require at least 2 hours notice to avoid a no-show fee.</span>
+          </p>
+        </div>
       </div>
     </div>`;
   if (emailCfg.enabled && transporter) {
@@ -302,18 +337,34 @@ async function sendReminderMessage(booking, hoursAhead) {
 
 async function sendNoShowMessage(booking) {
   const first   = booking.customer_name.split(' ')[0];
-  const subject = `We missed you at Gents Barber Shop`;
+  const subject = `We missed you, ${first} — let's get you rebooked!`;
   const html = `
-    <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
-      <div style="background:#222;padding:24px;text-align:center;border-radius:8px 8px 0 0">
-        <h1 style="color:#fff;margin:0;font-size:22px">✂ Gents Barber Shop</h1>
-        <p style="color:#aaa;margin:6px 0 0;font-size:13px">893 Lafayette Road, Hampton, NH</p>
+    <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;background:#f5f0e8">
+      <div style="background:linear-gradient(135deg,#6b1212,#8B1A1A);padding:28px;text-align:center;border-radius:12px 12px 0 0;border-bottom:4px solid #c9a95a">
+        <div style="font-size:28px;margin-bottom:8px">✂</div>
+        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Gents Barber Shop</h1>
+        <p style="color:#e8c888;margin:5px 0 0;font-size:12px">893 Lafayette Road · Hampton, New Hampshire</p>
       </div>
-      <div style="background:#fff;border:1px solid #e4e4e4;border-top:none;padding:28px;border-radius:0 0 8px 8px">
-        <h2 style="margin:0 0 6px;color:#1a1a1a">We missed you, ${first}!</h2>
-        <p style="color:#666;margin:0 0 16px;font-size:14px">It looks like you weren't able to make your appointment on ${fmtDateFn(booking.appointment_date)} at ${fmtTimeFn(booking.appointment_time)}.</p>
-        <p style="color:#666;margin:0 0 24px;font-size:14px">No worries — we'd love to get you back in the chair soon. Give us a call or book online to reschedule anytime.</p>
-        <p style="margin:24px 0 0;font-size:13px;color:#888">893 Lafayette Road, Hampton, New Hampshire</p>
+      <div style="background:#fff;border:1px solid #e4ddd0;border-top:none;padding:30px 28px;border-radius:0 0 12px 12px">
+        <h2 style="margin:0 0 8px;color:#1a0707;font-size:20px">We missed you, ${first}!</h2>
+        <p style="color:#555;margin:0 0 14px;font-size:14px;line-height:1.7;font-family:sans-serif">
+          It looks like you weren't able to make your appointment on <strong>${fmtDateFn(booking.appointment_date)}</strong> at <strong>${fmtTimeFn(booking.appointment_time)}</strong>.
+        </p>
+        <p style="color:#555;margin:0 0 28px;font-size:14px;line-height:1.7;font-family:sans-serif">
+          No worries at all — life happens! We'd love to see you soon. Book a new appointment online anytime or give us a call.
+        </p>
+        <div style="text-align:center;margin-bottom:24px">
+          <a href="${BASE_URL}/booking" style="display:inline-block;padding:13px 32px;background:#8B1A1A;color:#fff;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;font-family:sans-serif">
+            Book a New Appointment →
+          </a>
+        </div>
+        <div style="text-align:center;padding-top:16px;border-top:1px solid #e4ddd0">
+          <p style="font-size:12px;color:#aaa;margin:0;font-family:sans-serif;line-height:1.8">
+            <strong style="color:#8B1A1A">Gents Barber Shop</strong><br>
+            893 Lafayette Road · Hampton, NH 03842<br>
+            <a href="tel:6036018615" style="color:#8B1A1A;text-decoration:none">603-601-8615</a>
+          </p>
+        </div>
       </div>
     </div>`;
   if (emailCfg.enabled && transporter) {
@@ -417,7 +468,7 @@ if (process.env.RAILWAY_ENVIRONMENT) {
   app.use('/uploads', express.static('/data/uploads'));
 }
 app.use(session({
-  secret: 'gents-barber-shop-secret-2024',
+  secret: process.env.SESSION_SECRET || 'gents-barber-shop-secret-2026-xK9mP3rQ',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 8*60*60*1000 }
@@ -1017,6 +1068,60 @@ app.post('/api/admin/bookings/:id/remind', requireAdmin, async (req,res) => {
 // ── Cron: reminder scheduler ────────────────────────────────────────────────
 cron.schedule('*/15 * * * *', () => {
   checkAndSendReminders();
+});
+
+// ── Robots.txt ─────────────────────────────────────────────────────────────
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain').send(
+    'User-agent: *\nAllow: /\nDisallow: /admin.html\nDisallow: /api/\nSitemap: https://gentsbarbershop.com/sitemap.xml'
+  );
+});
+
+// ── Sitemap.xml ────────────────────────────────────────────────────────────
+app.get('/sitemap.xml', (_req, res) => {
+  const base = 'https://gentsbarbershop.com';
+  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${base}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>${base}/booking</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+</urlset>`);
+});
+
+// ── 404 handler ─────────────────────────────────────────────────────────────
+app.use((_req, res) => {
+  res.status(404).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found — Gents Barber Shop</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a0707;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{background:#fff;border-radius:16px;padding:48px 40px;max-width:480px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+    .icon{font-size:56px;margin-bottom:16px}
+    h1{font-family:Georgia,serif;font-size:28px;font-weight:700;color:#1a0707;margin-bottom:8px}
+    p{font-size:15px;color:#666;line-height:1.7;margin-bottom:28px}
+    .btn{display:inline-block;background:#8B1A1A;color:#fff;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;margin:0 6px 10px;transition:background .15s}
+    .btn:hover{background:#6b1212}
+    .btn-ghost{background:#f5f0e8;color:#8B1A1A}
+    .btn-ghost:hover{background:#e8ddd0}
+    .divider{width:40px;height:3px;background:#c9a95a;border-radius:2px;margin:0 auto 24px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">✂</div>
+    <h1>Page Not Found</h1>
+    <div class="divider"></div>
+    <p>Looks like this page got a trim! The page you're looking for doesn't exist or may have moved.</p>
+    <div>
+      <a href="/" class="btn">← Back to Home</a>
+      <a href="/booking" class="btn btn-ghost">Book an Appointment</a>
+    </div>
+  </div>
+</body>
+</html>`);
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
