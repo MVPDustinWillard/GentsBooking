@@ -5,7 +5,7 @@ const express    = require('express');
 const Database   = require('better-sqlite3');
 const bcrypt     = require('bcryptjs');
 const session    = require('express-session');
-const nodemailer = require('nodemailer');
+const https      = require('https');
 const multer     = require('multer');
 const twilio     = require('twilio');
 const path       = require('path');
@@ -137,10 +137,38 @@ db.prepare(`
   }
 })();
 
-// ── Email ──────────────────────────────────────────────────────────────────
-const transporter = emailCfg.enabled
-  ? nodemailer.createTransport(emailCfg.smtp)
-  : null;
+// ── Email (Resend HTTP API) ─────────────────────────────────────────────────
+const RESEND_KEY = process.env.RESEND_API_KEY || '';
+if (RESEND_KEY) console.log('[email] Resend configured — emails will be sent');
+else            console.log('[email] No RESEND_API_KEY — emails will be skipped');
+
+async function sendEmail(to, subject, html, attachments) {
+  if (!RESEND_KEY) {
+    console.log(`[email] (dev) Would send "${subject}" to ${to}`);
+    return;
+  }
+  const body = { from: 'Gents Barber Shop <noreply@gentsbarbershop.com>', to: [to], subject, html };
+  if (attachments && attachments.length) {
+    body.attachments = attachments.map(a => ({
+      filename: a.filename,
+      content:  Buffer.from(a.content).toString('base64'),
+    }));
+  }
+  const data = JSON.stringify(body);
+  await new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.resend.com', path: '/emails', method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
+    }, res => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => res.statusCode < 300 ? resolve() : reject(new Error(`Resend ${res.statusCode}: ${raw}`)));
+    });
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
 
 function fmtTimeFn(t) {
   const [h,m] = t.split(':').map(Number);
@@ -236,22 +264,8 @@ async function sendBookingConfirmation(booking) {
       </div>
     </div>`;
 
-  if (emailCfg.enabled && transporter) {
-    await transporter.sendMail({
-      from: emailCfg.from,
-      to: booking.customer_email,
-      subject,
-      html,
-      attachments: [{
-        filename: 'appointment.ics',
-        content:  icsContent,
-        contentType: 'text/calendar; charset=utf-8; method=REQUEST',
-      }],
-    });
-    console.log(`[email] Sent confirmation + calendar invite to ${booking.customer_email}`);
-  } else {
-    console.log(`[email] (dev) Would send confirmation to ${booking.customer_email} with .ics attachment`);
-  }
+  await sendEmail(booking.customer_email, subject, html, [{ filename: 'appointment.ics', content: icsContent }]);
+  console.log(`[email] Sent confirmation to ${booking.customer_email}`);
 
   // ── SMS ──────────────────────────────────────────────────────────────────
   if (booking.customer_phone) {
@@ -318,12 +332,8 @@ async function sendReminderMessage(booking, hoursAhead) {
         </div>
       </div>
     </div>`;
-  if (emailCfg.enabled && transporter) {
-    await transporter.sendMail({ from: emailCfg.from, to: booking.customer_email, subject, html });
-    console.log(`[email] Sent ${hoursAhead}h reminder to ${booking.customer_email}`);
-  } else {
-    console.log(`[email] (dev) Would send ${hoursAhead}h reminder to ${booking.customer_email}`);
-  }
+  await sendEmail(booking.customer_email, subject, html);
+  console.log(`[email] Sent ${hoursAhead}h reminder to ${booking.customer_email}`);
   if (booking.customer_phone) {
     const smsBody = `Gents Barber Shop: Reminder! Your ${booking.service_name} appointment is in ${hoursAhead} hour${hoursAhead>1?'s':''} at ${fmtTimeFn(booking.appointment_time)}. 893 Lafayette Rd, Hampton NH.`;
     if (emailCfg.sms?.enabled && smsClient) {
@@ -367,12 +377,8 @@ async function sendNoShowMessage(booking) {
         </div>
       </div>
     </div>`;
-  if (emailCfg.enabled && transporter) {
-    await transporter.sendMail({ from: emailCfg.from, to: booking.customer_email, subject, html });
-    console.log(`[email] Sent no-show message to ${booking.customer_email}`);
-  } else {
-    console.log(`[email] (dev) Would send no-show message to ${booking.customer_email}`);
-  }
+  await sendEmail(booking.customer_email, subject, html);
+  console.log(`[email] Sent no-show message to ${booking.customer_email}`);
   if (booking.customer_phone) {
     const smsBody = `Hi ${first}, we missed you at Gents Barber Shop today! No worries — call us or visit our website to rebook. We'd love to see you soon!`;
     if (emailCfg.sms?.enabled && smsClient) {
@@ -1035,13 +1041,9 @@ app.post('/api/admin/customers/broadcast', requireAdmin, async (req,res) => {
   let sent = 0, errors = 0;
   for (const c of targets) {
     try {
-      if (c.email && emailCfg.enabled && transporter) {
-        await transporter.sendMail({
-          from: emailCfg.from,
-          to:   c.email,
-          subject: subject || 'Message from Gents Barber Shop',
-          html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#fff;border-radius:8px">${message.replace(/\n/g,'<br>')}<p style="margin-top:24px;font-size:12px;color:#aaa">Gents Barber Shop · 893 Lafayette Road, Hampton, NH</p></div>`
-        });
+      if (c.email) {
+        await sendEmail(c.email, subject || 'Message from Gents Barber Shop',
+          `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#fff;border-radius:8px">${message.replace(/\n/g,'<br>')}<p style="margin-top:24px;font-size:12px;color:#aaa">Gents Barber Shop · 893 Lafayette Road, Hampton, NH</p></div>`);
       }
       if (c.phone && emailCfg.sms?.enabled && smsClient) {
         await smsClient.messages.create({ body: message, from: emailCfg.sms.fromNumber, to: c.phone });
