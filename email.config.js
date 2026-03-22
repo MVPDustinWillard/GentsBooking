@@ -1,17 +1,22 @@
 // Gents Barber Shop — notification config
-// Set enabled: true and fill in real credentials to activate each channel.
+// Credentials are read from environment variables (.env locally, Railway vars in production)
+
+const gmailUser = process.env.GMAIL_USER || '';
+const gmailPass = (process.env.GMAIL_PASS || '').trim();
 
 module.exports = {
   // ── Email (nodemailer / Gmail SMTP) ────────────────────────────────────────
-  enabled: false,
-  from: '"Gents Barber Shop" <noreply@gentsbarbershop.com>',
+  // Enable automatically when GMAIL_USER and GMAIL_PASS env vars are set.
+  // To get a Gmail App Password: Google Account → Security → 2-Step Verification → App Passwords
+  enabled: !!(gmailUser && gmailPass),
+  from: gmailUser ? `"Gents Barber Shop" <${gmailUser}>` : '"Gents Barber Shop" <noreply@gentsbarbershop.com>',
   smtp: {
     host: 'smtp.gmail.com',
     port: 587,
     secure: false,
     auth: {
-      user: 'your-email@gmail.com',
-      pass: 'your-app-password',  // Gmail App Password (not your regular password)
+      user: gmailUser,
+      pass: gmailPass,
     },
   },
 
