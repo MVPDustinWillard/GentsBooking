@@ -1602,6 +1602,12 @@ async function openWalkinModal() {
   document.getElementById('wi-date').value=localDateStr();
   document.getElementById('wi-err').classList.remove('show');
   document.getElementById('wi-ok').classList.remove('show');
+  // Ensure service select is populated (in case init() hasn't finished yet)
+  const wsSel = document.getElementById('wi-service');
+  if (!wsSel.options.length) {
+    const svcs = await fetch('/api/services').then(r=>r.json()).catch(()=>[]);
+    svcs.forEach(s => { const o=document.createElement('option'); o.value=s.id; o.textContent=`${s.name} ($${(s.price_cents/100).toFixed(0)})`; wsSel.appendChild(o); });
+  }
   await loadWalkinSlots();
   openModal('walkin-modal');
 }
@@ -1613,7 +1619,9 @@ async function loadWalkinSlots() {
   sel.innerHTML='';
   let slots = ALL_TIMES_WI;
   if (date) {
-    const url  = `/api/availability?date=${date}${barber?`&stylist_id=${barber}`:''}`;
+    const url = barber
+      ? `/api/availability?date=${date}&stylist_id=${barber}`
+      : `/api/admin/walkin-availability?date=${date}`;
     const data = await fetch(url).then(r=>r.json()).catch(()=>({slots:ALL_TIMES_WI}));
     slots = data.slots || ALL_TIMES_WI;
   }

@@ -428,6 +428,15 @@ app.get('/api/availability', (req,res) => {
   res.json({ slots: ALL_SLOTS.filter(s=>!taken.has(s)) });
 });
 
+// Walk-in availability: only checks null-stylist conflicts (for admin walk-in modal)
+app.get('/api/admin/walkin-availability', requireAuth, (req, res) => {
+  const { date } = req.query;
+  if (!date) return res.status(400).json({error:'date required'});
+  const booked = db.prepare("SELECT appointment_time FROM bookings WHERE stylist_id IS NULL AND appointment_date=? AND status!='cancelled'").all(date);
+  const taken = new Set(booked.map(r=>r.appointment_time));
+  res.json({ slots: ALL_SLOTS.filter(s=>!taken.has(s)) });
+});
+
 app.post('/api/bookings', async (req,res) => {
   const { customer_name, customer_email, customer_phone, stylist_id, service_id, appointment_date, appointment_time, notes } = req.body;
   if (!customer_name||!customer_email||!service_id||!appointment_date||!appointment_time)
