@@ -20,6 +20,13 @@ module.exports = async function globalSetup() {
     if (info.changes > 0) {
       console.log(`[setup] Cleared ${info.changes} stale walk-in test booking(s) for ${dateStr}`);
     }
+    // Remove ALL test bookings accumulated by E2E tests on their fixed future dates
+    const e2e = db.prepare(
+      "DELETE FROM bookings WHERE customer_email LIKE '%@test.com' AND appointment_date != ?"
+    ).run(dateStr);
+    if (e2e.changes > 0) {
+      console.log(`[setup] Cleared ${e2e.changes} stale E2E test booking(s) from prior runs`);
+    }
     db.close();
   } catch (e) {
     console.warn('[setup] DB cleanup skipped:', e.message);
