@@ -249,6 +249,7 @@
   </button>
   <div class="nav-links" id="nav-links">
     <a href="#services" onclick="closeMenu()">Services</a>
+    <a href="#pricing" onclick="closeMenu()">Pricing</a>
     <a href="#gallery" onclick="closeMenu()">Gallery</a>
     <a href="#hours" onclick="closeMenu()">Hours</a>
     <a href="#contact" onclick="closeMenu()">Contact</a>
@@ -310,6 +311,22 @@
           <a href="/booking" class="service-card-link">Book Now →</a>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ── -->
+<section id="pricing" style="background:#f5f0e8">
+  <div class="section-inner">
+    <div class="section-label">Menu &amp; Pricing</div>
+    <h2 class="section-title">Simple, Transparent Pricing</h2>
+    <div class="divider"></div>
+    <p class="section-sub">No surprises. Every cut, every time. Pricing below reflects our full service menu.</p>
+    <div id="pricing-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+      <div style="background:#fff;border-radius:12px;padding:22px;border:1px solid #e4ddd0;text-align:center;color:#888;font-size:14px">Loading services…</div>
+    </div>
+    <div style="text-align:center;margin-top:40px">
+      <a href="/booking" style="display:inline-block;background:#8b1a1a;color:#fff;padding:14px 40px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;transition:background .15s" onmouseover="this.style.background='#6b1212'" onmouseout="this.style.background='#8b1a1a'">Book an Appointment →</a>
     </div>
   </div>
 </section>
@@ -475,6 +492,32 @@ function closeMenu() {
   document.getElementById('nav-burger').classList.remove('open');
   document.getElementById('nav-links').classList.remove('open');
 }
+
+// Load live pricing from API
+fetch('/api/services')
+  .then(r=>r.json())
+  .then(services => {
+    const grid = document.getElementById('pricing-grid');
+    if (!services.length) { grid.innerHTML='<p style="color:#888">No services available.</p>'; return; }
+    const icons = ['✂','💈','👦','🧒','🎖️','🪒','💆','⭐'];
+    grid.innerHTML = services.map((s,i) => `
+      <div style="background:#fff;border-radius:14px;padding:24px 22px;border:1px solid #e4ddd0;display:flex;flex-direction:column;gap:6px;transition:box-shadow .2s;box-shadow:0 2px 8px rgba(0,0,0,.06)" onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,.06)'">
+        <div style="font-size:28px;margin-bottom:6px">${icons[i%icons.length]}</div>
+        <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;color:#1a0707;line-height:1.3">${s.name}</div>
+        <div style="font-size:13px;color:#777;line-height:1.6;flex:1">${s.description||''}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:12px;border-top:1px solid #f0ebe3">
+          <span style="font-size:24px;font-weight:800;color:#8b1a1a">$${(s.price_cents/100).toFixed(0)}</span>
+          <span style="font-size:12px;color:#999;background:#f5f0e8;padding:4px 10px;border-radius:20px">${s.duration_min} min</span>
+        </div>
+        <a href="/booking" style="display:block;text-align:center;background:#f5f0e8;color:#8b1a1a;padding:9px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;margin-top:8px;transition:background .15s" onmouseover="this.style.background='#8b1a1a';this.style.color='#fff'" onmouseout="this.style.background='#f5f0e8';this.style.color='#8b1a1a'">Book This Service →</a>
+      </div>`).join('');
+  }).catch(() => {
+    document.getElementById('pricing-grid').innerHTML = `
+      <div style="background:#fff;border-radius:12px;padding:22px 24px;border:1px solid #e4ddd0">
+        <div style="font-weight:700;font-size:15px;margin-bottom:6px">Haircuts from $20</div>
+        <div style="font-size:13px;color:#777">Call us at <a href="tel:6036018615" style="color:#8b1a1a">603-601-8615</a> for current pricing.</div>
+      </div>`;
+  });
 </script>
 </body>
 </html>

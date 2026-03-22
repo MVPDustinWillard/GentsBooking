@@ -1852,3 +1852,291 @@ test.describe('Feature 7 — Block Time UI', () => {
     await expect(page.locator('#bt-end')).toBeVisible();
   });
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// OWNER REVIEW — Revenue, Services, Walk-in, Export
+// ════════════════════════════════════════════════════════════════════════════
+
+test.describe('Owner Review — Revenue Dashboard', () => {
+  test.use(DESKTOP);
+
+  test('OR-01: Revenue endpoint requires auth', async ({ page }) => {
+    const res = await page.request.get(`${BASE}/api/admin/revenue`);
+    expect(res.status()).toBe(401);
+  });
+
+  test('OR-02: Revenue returns today/week/month/all_time/customers', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res  = await page.request.get(`${BASE}/api/admin/revenue`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty('today');
+    expect(data).toHaveProperty('week');
+    expect(data).toHaveProperty('month');
+    expect(data).toHaveProperty('all_time');
+    expect(data).toHaveProperty('customers');
+    expect(typeof data.today.revenue).toBe('number');
+    expect(typeof data.today.count).toBe('number');
+    expect(typeof data.customers).toBe('number');
+  });
+
+  test('OR-03: Revenue dashboard row is visible to admin', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    await expect(page.locator('#rev-row')).toBeVisible();
+    await expect(page.locator('#rev-today')).toBeVisible();
+    await expect(page.locator('#rev-week')).toBeVisible();
+    await expect(page.locator('#rev-month')).toBeVisible();
+    await expect(page.locator('#rev-customers')).toBeVisible();
+  });
+
+  test('OR-04: Revenue row is NOT shown to barber', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    await expect(page.locator('#rev-row')).toHaveCSS('display', 'none');
+  });
+
+  test('OR-05: Revenue figures are non-negative numbers after a booking', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res  = await page.request.get(`${BASE}/api/admin/revenue`);
+    const data = await res.json();
+    expect(data.all_time.revenue).toBeGreaterThanOrEqual(0);
+    expect(data.customers).toBeGreaterThan(0);
+  });
+});
+
+test.describe('Owner Review — Services Management', () => {
+  test.use(DESKTOP);
+
+  test('OR-06: Admin services endpoint returns all services', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res  = await page.request.get(`${BASE}/api/admin/services`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThan(0);
+    expect(data[0]).toHaveProperty('price_cents');
+    expect(data[0]).toHaveProperty('duration_min');
+    expect(data[0]).toHaveProperty('active');
+  });
+
+  test('OR-07: Services endpoint requires admin (barber gets 403)', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    const res = await page.request.get(`${BASE}/api/admin/services`);
+    expect(res.status()).toBe(403);
+  });
+
+  test('OR-08: Admin can create a new service', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res = await page.request.post(`${BASE}/api/admin/services`, {
+      data: { name:'Test Shave Service', price_cents:1500, duration_min:20, description:'A test' }
+    });
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.name).toBe('Test Shave Service');
+    expect(data.price_cents).toBe(1500);
+    expect(data.active).toBe(1);
+  });
+
+  test('OR-09: Creating service with missing fields returns 400', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res = await page.request.post(`${BASE}/api/admin/services`, {
+      data: { name:'Incomplete' }
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  test('OR-10: Admin can update a service price', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    // Create then update
+    const createRes = await page.request.post(`${BASE}/api/admin/services`, {
+      data: { name:'Price Update Test', price_cents:2000, duration_min:30 }
+    });
+    const svc = await createRes.json();
+    const res = await page.request.patch(`${BASE}/api/admin/services/${svc.id}`, {
+      data: { price_cents:2500 }
+    });
+    expect(res.status()).toBe(200);
+    const updated = await res.json();
+    expect(updated.price_cents).toBe(2500);
+  });
+
+  test('OR-11: Admin can deactivate a service', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const createRes = await page.request.post(`${BASE}/api/admin/services`, {
+      data: { name:'Deactivate Test', price_cents:1000, duration_min:15 }
+    });
+    const svc = await createRes.json();
+    const res = await page.request.patch(`${BASE}/api/admin/services/${svc.id}`, {
+      data: { active: false }
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).active).toBe(0);
+    // Should not show in public API
+    const pub = await page.request.get(`${BASE}/api/services`);
+    const pubList = await pub.json();
+    expect(pubList.some(s=>s.id===svc.id)).toBe(false);
+  });
+
+  test('OR-12: Services management UI visible to admin', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    await expect(page.locator('#nav-services')).toBeVisible();
+    await page.locator('#nav-services').click();
+    await expect(page.locator('#svc-table')).toBeVisible();
+    // Table should have rows
+    await page.waitForTimeout(800);
+    const rows = await page.locator('#svc-tbody tr').count();
+    expect(rows).toBeGreaterThan(0);
+  });
+});
+
+test.describe('Owner Review — Walk-In Booking', () => {
+  test.use(DESKTOP);
+
+  test('OR-13: Admin can create a walk-in booking via API', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const slot = nextSlot();
+    const res  = await page.request.post(`${BASE}/api/admin/bookings/create`, {
+      data: {
+        customer_name:    'Walk-In Customer',
+        customer_email:   `walkin_${Date.now()}@test.com`,
+        customer_phone:   '6035550001',
+        service_id:       1,
+        stylist_id:       slot.stylist_id,
+        appointment_date: slot.date,
+        appointment_time: slot.time,
+      }
+    });
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.status).toBe('confirmed'); // walk-ins are auto-confirmed
+    expect(data.customer_name).toBe('Walk-In Customer');
+  });
+
+  test('OR-14: Walk-in booking requires auth', async ({ page }) => {
+    const slot = nextSlot();
+    const res  = await page.request.post(`${BASE}/api/admin/bookings/create`, {
+      data: { customer_name:'X', customer_email:'x@test.com', service_id:1,
+              appointment_date:slot.date, appointment_time:slot.time }
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test('OR-15: Walk-in booking conflict returns 409', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const slot = nextSlot();
+    // First booking
+    await page.request.post(`${BASE}/api/admin/bookings/create`, {
+      data: { customer_name:'WI A', customer_email:`wia_${Date.now()}@test.com`, service_id:1,
+              stylist_id:1, appointment_date:slot.date, appointment_time:slot.time }
+    });
+    // Conflict
+    const res = await page.request.post(`${BASE}/api/admin/bookings/create`, {
+      data: { customer_name:'WI B', customer_email:`wib_${Date.now()}@test.com`, service_id:1,
+              stylist_id:1, appointment_date:slot.date, appointment_time:slot.time }
+    });
+    expect(res.status()).toBe(409);
+  });
+
+  test('OR-16: Walk-in modal opens and has required fields', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    await page.locator('#btn-walkin').click();
+    await expect(page.locator('#walkin-modal')).toHaveClass(/open/);
+    await expect(page.locator('#wi-name')).toBeVisible();
+    await expect(page.locator('#wi-email')).toBeVisible();
+    await expect(page.locator('#wi-service')).toBeVisible();
+    await expect(page.locator('#wi-date')).toBeVisible();
+    await expect(page.locator('#wi-time')).toBeVisible();
+  });
+});
+
+test.describe('Owner Review — CSV Export', () => {
+  test.use(DESKTOP);
+
+  test('OR-17: Export endpoint requires admin', async ({ page }) => {
+    const res = await page.request.get(`${BASE}/api/admin/bookings/export`);
+    expect(res.status()).toBe(401);
+  });
+
+  test('OR-18: Export returns CSV content-type', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res = await page.request.get(`${BASE}/api/admin/bookings/export`);
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-type']).toContain('text/csv');
+  });
+
+  test('OR-19: Export CSV has header row and data rows', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res  = await page.request.get(`${BASE}/api/admin/bookings/export`);
+    const body = await res.text();
+    expect(body).toContain('ID,Customer Name,Email');
+    expect(body).toContain('Customer');
+    const lines = body.trim().split('\n');
+    expect(lines.length).toBeGreaterThan(1); // header + at least one data row
+  });
+
+  test('OR-20: Export button is visible to admin in bookings view', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    await expect(page.locator('#btn-export')).toBeVisible();
+  });
+});
+
+test.describe('Owner Review — Home Page Pricing', () => {
+  test.use(DESKTOP);
+
+  test('OR-21: Home page has Pricing section', async ({ page }) => {
+    await page.goto(BASE);
+    await expect(page.locator('#pricing')).toBeVisible();
+  });
+
+  test('OR-22: Pricing section loads service cards from API', async ({ page }) => {
+    await page.goto(BASE);
+    await page.waitForSelector('#pricing-grid a[href="/booking"]', { timeout: 5000 });
+    const cards = await page.locator('#pricing-grid > div').count();
+    expect(cards).toBeGreaterThan(0);
+  });
+
+  test('OR-23: Pricing nav link exists', async ({ page }) => {
+    await page.goto(BASE);
+    await expect(page.locator('a[href="#pricing"]')).toBeVisible();
+  });
+
+  test('OR-24: Each pricing card shows price and duration', async ({ page }) => {
+    await page.goto(BASE);
+    await page.waitForSelector('#pricing-grid a[href="/booking"]', { timeout: 5000 });
+    const firstCard = page.locator('#pricing-grid > div').first();
+    const text      = await firstCard.textContent();
+    expect(text).toMatch(/\$\d+/); // has a price
+    expect(text).toMatch(/\d+ min/); // has a duration
+  });
+});
+
+test.describe('Owner Review — End-to-End Admin Flows', () => {
+  test.use(DESKTOP);
+
+  test('OR-25: Full walk-in booking flow via UI', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    await page.locator('#btn-walkin').click();
+    await page.fill('#wi-name', 'John Walk-In');
+    await page.fill('#wi-email', `johnwi_${Date.now()}@test.com`);
+    await page.fill('#wi-phone', '6031230001');
+    const today = new Date(); const td=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    await page.locator('#wi-date').fill(td);
+    await page.waitForTimeout(600); // wait for slots to load
+    const timeOpts = await page.locator('#wi-time option').count();
+    expect(timeOpts).toBeGreaterThan(0);
+    await page.locator('#btn-wi-save').click();
+    // Should show success
+    await expect(page.locator('#wi-ok')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('OR-26: Services view add flow via UI', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    await page.locator('#nav-services').click();
+    await page.waitForTimeout(600);
+    await page.locator('button:has-text("+ Add Service")').click();
+    await expect(page.locator('#add-svc-modal')).toHaveClass(/open/);
+    await page.fill('#svc-name', 'UI Test Shave');
+    await page.fill('#svc-price', '18.00');
+    await page.locator('#btn-svc-save').click();
+    await expect(page.locator('#svc-ok')).toBeVisible({ timeout: 5000 });
+  });
+});

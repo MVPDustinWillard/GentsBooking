@@ -686,6 +686,106 @@ app.post('/api/admin/customers/merge', requireAdmin, (req,res) => {
   res.json(db.prepare('SELECT * FROM customers WHERE email=?').get(keep_email));
 });
 
+// ── Admin: Revenue stats ───────────────────────────────────────────────────
+app.get('/api/admin/revenue', requireAuth, (req, res) => {
+  const now  = new Date();
+  const pad2 = n => String(n).padStart(2,'0');
+  const today = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
+  const dayOfWeek   = now.getDay();
+  const mondayOffset= dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(now); monday.setDate(now.getDate() - mondayOffset);
+  const weekStart  = `${monday.getFullYear()}-${pad2(monday.getMonth()+1)}-${pad2(monday.getDate())}`;
+  const monthStart = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-01`;
+  const statuses   = "('confirmed','completed','no_show')";
+  const revQ = date => db.prepare(`SELECT COALESCE(SUM(svc.price_cents),0) as revenue, COUNT(*) as count FROM bookings b JOIN services svc ON b.service_id=svc.id WHERE b.status IN ${statuses} AND b.appointment_date>=?`).get(date);
+  const todayQ = db.prepare(`SELECT COALESCE(SUM(svc.price_cents),0) as revenue, COUNT(*) as count FROM bookings b JOIN services svc ON b.service_id=svc.id WHERE b.status IN ${statuses} AND b.appointment_date=?`).get(today);
+  const customers  = db.prepare(`SELECT COUNT(*) as c FROM customers WHERE merged_into IS NULL`).get().c;
+  const allTime    = db.prepare(`SELECT COALESCE(SUM(svc.price_cents),0) as revenue, COUNT(*) as count FROM bookings b JOIN services svc ON b.service_id=svc.id WHERE b.status IN ${statuses}`).get();
+  res.json({
+    today:    { revenue: todayQ.revenue,      count: todayQ.count },
+    week:     { revenue: revQ(weekStart).revenue,  count: revQ(weekStart).count },
+    month:    { revenue: revQ(monthStart).revenue, count: revQ(monthStart).count },
+    all_time: { revenue: allTime.revenue,     count: allTime.count },
+    customers,
+  });
+});
+
+// ── Admin: Services management ─────────────────────────────────────────────
+app.get('/api/admin/services', requireAdmin, (_req, res) =>
+  res.json(db.prepare('SELECT * FROM services ORDER BY active DESC, id ASC').all()));
+
+app.post('/api/admin/services', requireAdmin, (req, res) => {
+  const { name, duration_min, price_cents, description } = req.body;
+  if (!name||!price_cents) return res.status(400).json({error:'name and price_cents required'});
+  const r = db.prepare('INSERT INTO services (name,duration_min,price_cents,description) VALUES (?,?,?,?)')
+    .run(name.trim(), duration_min||30, price_cents, description||'');
+  res.status(201).json(db.prepare('SELECT * FROM services WHERE id=?').get(r.lastInsertRowid));
+});
+
+app.patch('/api/admin/services/:id', requireAdmin, (req, res) => {
+  const svc = db.prepare('SELECT * FROM services WHERE id=?').get(req.params.id);
+  if (!svc) return res.status(404).json({error:'Service not found'});
+  const { name, duration_min, price_cents, description, active } = req.body;
+  const updates=[]; const p=[];
+  if (name!==undefined)         { updates.push('name=?');         p.push(name.trim()); }
+  if (duration_min!==undefined) { updates.push('duration_min=?'); p.push(Number(duration_min)); }
+  if (price_cents!==undefined)  { updates.push('price_cents=?');  p.push(Number(price_cents)); }
+  if (description!==undefined)  { updates.push('description=?');  p.push(description); }
+  if (active!==undefined)       { updates.push('active=?');       p.push(active?1:0); }
+  if (!updates.length) return res.status(400).json({error:'Nothing to update'});
+  p.push(req.params.id);
+  db.prepare(`UPDATE services SET ${updates.join(',')} WHERE id=?`).run(...p);
+  res.json(db.prepare('SELECT * FROM services WHERE id=?').get(req.params.id));
+});
+
+// ── Admin: Create booking (walk-in) ────────────────────────────────────────
+app.post('/api/admin/bookings/create', requireAuth, async (req, res) => {
+  const { customer_name, customer_email, customer_phone, stylist_id, service_id, appointment_date, appointment_time, notes } = req.body;
+  if (!customer_name||!customer_email||!service_id||!appointment_date||!appointment_time)
+    return res.status(400).json({error:'Missing required fields'});
+  if (!db.prepare('SELECT id FROM services WHERE id=? AND active=1').get(service_id))
+    return res.status(400).json({error:'Invalid or inactive service'});
+  if (stylist_id && !db.prepare('SELECT id FROM stylists WHERE id=? AND active=1').get(stylist_id))
+    return res.status(400).json({error:'Invalid barber'});
+  const conflict = db.prepare("SELECT id FROM bookings WHERE stylist_id IS ? AND appointment_date=? AND appointment_time=? AND status!='cancelled'")
+    .get(stylist_id||null, appointment_date, appointment_time);
+  if (conflict) return res.status(409).json({error:'That time slot is already booked'});
+  const r = db.prepare('INSERT INTO bookings (customer_name,customer_email,customer_phone,stylist_id,service_id,appointment_date,appointment_time,notes,status) VALUES (?,?,?,?,?,?,?,?,?)')
+    .run(customer_name, customer_email, customer_phone||'', stylist_id||null, service_id, appointment_date, appointment_time, notes||'', 'confirmed');
+  db.prepare(`INSERT INTO customers (email,name,phone) VALUES (?,?,?) ON CONFLICT(email) DO UPDATE SET name=CASE WHEN excluded.name!='' THEN excluded.name ELSE name END, phone=CASE WHEN excluded.phone!='' THEN excluded.phone ELSE phone END`)
+    .run(customer_email, customer_name, customer_phone||'');
+  const booking = db.prepare(`SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min FROM bookings b LEFT JOIN stylists s ON b.stylist_id=s.id LEFT JOIN services svc ON b.service_id=svc.id WHERE b.id=?`).get(r.lastInsertRowid);
+  sendBookingConfirmation(booking).catch(e => console.error('[walkin email]', e.message));
+  res.status(201).json(booking);
+});
+
+// ── Admin: CSV export ──────────────────────────────────────────────────────
+app.get('/api/admin/bookings/export', requireAdmin, (req, res) => {
+  const bookings = db.prepare(`
+    SELECT b.id, b.customer_name, b.customer_email, b.customer_phone,
+      svc.name as service_name, s.name as stylist_name,
+      b.appointment_date, b.appointment_time, b.status,
+      svc.price_cents, b.notes, b.created_at
+    FROM bookings b
+    LEFT JOIN stylists s   ON b.stylist_id=s.id
+    LEFT JOIN services svc ON b.service_id=svc.id
+    ORDER BY b.appointment_date DESC, b.appointment_time DESC`).all();
+  const q = v => `"${String(v||'').replace(/"/g,'""')}"`;
+  const rows = [
+    'ID,Customer Name,Email,Phone,Service,Barber,Date,Time,Status,Price ($),Notes,Booked At',
+    ...bookings.map(b => [
+      b.id, q(b.customer_name), q(b.customer_email), q(b.customer_phone),
+      q(b.service_name), q(b.stylist_name||'Unassigned'),
+      b.appointment_date, b.appointment_time, b.status,
+      b.price_cents ? (b.price_cents/100).toFixed(2) : '0',
+      q(b.notes), q(b.created_at)
+    ].join(','))
+  ].join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="gents-bookings-${new Date().toISOString().slice(0,10)}.csv"`);
+  res.send('\ufeff' + rows);
+});
+
 // ── Barber: Blocked times (self-service) ───────────────────────────────────
 app.get('/api/barber/blocked-times', requireAuth, (req,res) => {
   const { date } = req.query;

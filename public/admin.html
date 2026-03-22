@@ -184,6 +184,28 @@
 
     /* ── Broadcast modal ── */
     .broadcast-note{font-size:12px;color:#888;margin-top:4px}
+
+    /* ── Revenue stats ── */
+    .revenue-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+    @media(max-width:900px){.revenue-grid{grid-template-columns:repeat(2,1fr)}}
+    .stat-card-rev{background:linear-gradient(135deg,#1a0707,#3a1010);border-radius:var(--radius);padding:16px 18px;color:#fff}
+    .stat-card-rev .stat-val{color:#c9a95a;font-size:22px;font-weight:800}
+    .stat-card-rev .stat-label{font-size:11px;color:#d4b896;text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+    .stat-card-cust{background:linear-gradient(135deg,#0c2340,#1a3a5c)}
+
+    /* ── Services management ── */
+    .svc-table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+    .svc-table thead th{padding:11px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap;background:#fafafa}
+    .svc-table tbody tr{border-bottom:1px solid #f0f0f0}
+    .svc-table tbody tr:last-child{border-bottom:none}
+    .svc-table tbody tr:hover{background:#fafafa}
+    .svc-table td{padding:12px 16px;font-size:13px;vertical-align:middle}
+    .svc-inactive{opacity:.5}
+    .svc-price{font-weight:700;color:#059669;font-size:14px}
+    .svc-dur{color:#888;font-size:12px}
+    .btn-svc-edit{padding:4px 10px;border-radius:6px;border:1px solid #888;background:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;color:#333;transition:all .12s}
+    .btn-svc-edit:hover{background:#f5f5f5}
+    .btn-svc-toggle{padding:4px 10px;border-radius:6px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s}
   </style>
 </head>
 <body>
@@ -212,6 +234,7 @@
     <div class="nav-section">Customers</div>
     <a class="nav-link" id="nav-customers" onclick="showView('customers','Customers',this)">👤 Customers</a>
     <a class="nav-link" id="nav-broadcast" style="display:none" onclick="openBroadcastModal()">📣 Send Broadcast</a>
+    <a class="nav-link" id="nav-services" style="display:none" onclick="showView('services','Services &amp; Pricing',this)">💈 Services &amp; Pricing</a>
     <div class="nav-section">My Schedule</div>
     <a class="nav-link" id="nav-blocked" onclick="showView('blocked','Block Off Time',this)">🚫 Block Off Time</a>
     <div class="nav-section">Quick Links</div>
@@ -234,10 +257,16 @@
     <!-- Bookings view -->
     <div class="view active" id="view-bookings">
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-val c-total"     id="s-total">—</div><div class="stat-label">Total</div></div>
+        <div class="stat-card"><div class="stat-val c-total"     id="s-total">—</div><div class="stat-label">Showing</div></div>
         <div class="stat-card"><div class="stat-val c-pending"   id="s-pending">—</div><div class="stat-label">Pending</div></div>
         <div class="stat-card"><div class="stat-val c-confirmed" id="s-confirmed">—</div><div class="stat-label">Confirmed</div></div>
         <div class="stat-card"><div class="stat-val c-cancelled" id="s-cancelled">—</div><div class="stat-label">Cancelled</div></div>
+      </div>
+      <div class="revenue-grid" id="rev-row" style="display:none">
+        <div class="stat-card stat-card-rev"><div class="stat-val" id="rev-today">—</div><div class="stat-label">Today's Revenue</div></div>
+        <div class="stat-card stat-card-rev"><div class="stat-val" id="rev-week">—</div><div class="stat-label">This Week</div></div>
+        <div class="stat-card stat-card-rev"><div class="stat-val" id="rev-month">—</div><div class="stat-label">This Month</div></div>
+        <div class="stat-card stat-card-rev stat-card-cust"><div class="stat-val" id="rev-customers">—</div><div class="stat-label">Total Customers</div></div>
       </div>
       <div class="filters">
         <button class="filter-btn active" id="fb-all"       onclick="setStatus('')">All</button>
@@ -249,6 +278,8 @@
         <select class="filter-select" id="f-barber" style="display:none" onchange="loadBookings()">
           <option value="">All Barbers</option>
         </select>
+        <button class="filter-btn" id="btn-walkin" style="display:none" onclick="openWalkinModal()">+ Walk-In</button>
+        <a class="filter-btn" id="btn-export" style="display:none" href="/api/admin/bookings/export" download>⬇ Export CSV</a>
       </div>
       <div class="table-wrap">
         <table>
@@ -300,6 +331,19 @@
       <div class="team-grid" id="team-grid">
         <div style="color:#888;font-size:14px">Loading...</div>
       </div>
+    </div>
+
+    <!-- Services view (admin only) -->
+    <div class="view" id="view-services">
+      <div class="team-header">
+        <div class="team-title">Services &amp; Pricing</div>
+        <button class="btn-add" onclick="openAddServiceModal()">+ Add Service</button>
+      </div>
+      <div class="alert alert-success" id="svc-ok" style="margin-bottom:16px"></div>
+      <table class="svc-table" id="svc-table">
+        <thead><tr><th>#</th><th>Service Name</th><th>Duration</th><th>Price</th><th>Description</th><th>Status</th><th></th></tr></thead>
+        <tbody id="svc-tbody"><tr><td colspan="7" style="padding:24px;text-align:center;color:#888">Loading…</td></tr></tbody>
+      </table>
     </div>
 
     <!-- Schedule view (admin only) -->
@@ -592,6 +636,79 @@
   </div>
 </div>
 
+<!-- ── Walk-In Booking Modal ── -->
+<div class="modal-overlay" id="walkin-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">New Walk-In Booking</div>
+      <button class="modal-close" onclick="closeModal('walkin-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error"   id="wi-err"></div>
+      <div class="alert alert-success" id="wi-ok"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Customer Name *</label><input type="text" id="wi-name" placeholder="Full name"></div>
+        <div class="field"><label>Phone</label><input type="tel" id="wi-phone" placeholder="603-000-0000"></div>
+      </div>
+      <div class="field"><label>Email *</label><input type="email" id="wi-email" placeholder="customer@email.com"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>Service *</label>
+          <select id="wi-service" class="field input" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit"></select>
+        </div>
+        <div class="field">
+          <label>Barber</label>
+          <select id="wi-barber" class="field input" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit" onchange="loadWalkinSlots()">
+            <option value="">Any Available</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Date *</label><input type="date" id="wi-date" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px" onchange="loadWalkinSlots()"></div>
+        <div class="field">
+          <label>Time *</label>
+          <select id="wi-time" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit"></select>
+        </div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="wi-notes" rows="2" placeholder="Any special requests…"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeModal('walkin-modal')">Cancel</button>
+      <button class="btn-modal-save" onclick="saveWalkin()" id="btn-wi-save">Create Booking</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Service Modal ── -->
+<div class="modal-overlay" id="add-svc-modal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title" id="svc-modal-title">Add Service</div>
+      <button class="modal-close" onclick="closeModal('add-svc-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error" id="svc-err"></div>
+      <input type="hidden" id="svc-edit-id">
+      <div class="field"><label>Service Name *</label><input type="text" id="svc-name" placeholder="e.g. The Basic (Haircut and Style)"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>Price (dollars) *</label>
+          <input type="number" id="svc-price" min="0" step="0.50" placeholder="e.g. 25.00">
+        </div>
+        <div class="field">
+          <label>Duration (minutes)</label>
+          <input type="number" id="svc-duration" min="15" step="15" value="30">
+        </div>
+      </div>
+      <div class="field"><label>Description</label><textarea id="svc-desc" rows="3" placeholder="Brief description shown on booking page…"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeModal('add-svc-modal')">Cancel</button>
+      <button class="btn-modal-save" onclick="saveService()" id="btn-svc-save">Save Service</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Reassign Booking Modal ── -->
 <div class="modal-overlay" id="reassign-modal">
   <div class="modal" style="max-width:420px">
@@ -653,6 +770,10 @@ async function init() {
     document.getElementById('nav-team-section').style.display = '';
     document.getElementById('nav-schedule').style.display = '';
     document.getElementById('nav-broadcast').style.display = '';
+    document.getElementById('nav-services').style.display = '';
+    document.getElementById('btn-walkin').style.display = '';
+    document.getElementById('btn-export').style.display = '';
+    document.getElementById('rev-row').style.display = '';
     const barbers = await fetch('/api/admin/barbers').then(r=>r.json());
     allBarbers = barbers;
     const sel = document.getElementById('f-barber');
@@ -660,7 +781,20 @@ async function init() {
       const o = document.createElement('option');
       o.value = s.id; o.textContent = s.name; sel.appendChild(o);
     });
+    // Populate walk-in barber select
+    const wbSel = document.getElementById('wi-barber');
+    barbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active).forEach(s => {
+      const o = document.createElement('option'); o.value=s.id; o.textContent=s.name; wbSel.appendChild(o);
+    });
+    loadRevenue();
   }
+  // Populate walk-in service select
+  const services = await fetch('/api/services').then(r=>r.json());
+  const wsSel = document.getElementById('wi-service');
+  services.forEach(s => {
+    const o = document.createElement('option'); o.value=s.id;
+    o.textContent = `${s.name} ($${(s.price_cents/100).toFixed(0)})`; wsSel.appendChild(o);
+  });
   // Populate time-slot selects for block-time form
   const ALL_SLOTS = [];
   for (let h=9; h<17; h++) { ALL_SLOTS.push(`${String(h).padStart(2,'0')}:00`); ALL_SLOTS.push(`${String(h).padStart(2,'0')}:30`); }
@@ -694,6 +828,7 @@ function showView(view, title, el) {
   }
   if (view === 'team')     { loadTeam(); return; }
   if (view === 'customers'){ loadCustomers(); return; }
+  if (view === 'services') { loadServices(); return; }
   if (view === 'schedule') {
     if (!document.getElementById('sched-date').value) document.getElementById('sched-date').value = localDateStr();
     loadSchedule(); return;
@@ -1359,6 +1494,157 @@ async function deleteBlockedTime(id) {
   if (!confirm('Remove this blocked time?')) return;
   await fetch(`/api/barber/blocked-times/${id}`,{method:'DELETE'});
   loadBlockedTimes();
+}
+
+// ── Revenue ────────────────────────────────────────────────
+async function loadRevenue() {
+  const r = await fetch('/api/admin/revenue').then(r=>r.json()).catch(()=>null);
+  if (!r) return;
+  const fmt = cents => `$${(cents/100).toFixed(0)}`;
+  document.getElementById('rev-today').textContent     = fmt(r.today.revenue);
+  document.getElementById('rev-week').textContent      = fmt(r.week.revenue);
+  document.getElementById('rev-month').textContent     = fmt(r.month.revenue);
+  document.getElementById('rev-customers').textContent = r.customers;
+}
+
+// ── Services Management ────────────────────────────────────
+let allServices = [];
+
+async function loadServices() {
+  allServices = await fetch('/api/admin/services').then(r=>r.json());
+  const tbody = document.getElementById('svc-tbody');
+  if (!allServices.length) { tbody.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:#888">No services found.</td></tr>'; return; }
+  tbody.innerHTML = allServices.map(s => `
+    <tr class="${s.active?'':'svc-inactive'}">
+      <td style="color:#bbb;font-size:12px;font-weight:700">#${s.id}</td>
+      <td style="font-weight:600;font-size:14px">${esc(s.name)}</td>
+      <td class="svc-dur">${s.duration_min} min</td>
+      <td class="svc-price">$${(s.price_cents/100).toFixed(0)}</td>
+      <td style="font-size:12px;color:#888;max-width:240px">${esc(s.description)||'—'}</td>
+      <td><span class="badge ${s.active?'badge-confirmed':'badge-cancelled'}">${s.active?'Active':'Inactive'}</span></td>
+      <td style="display:flex;gap:6px;align-items:center">
+        <button class="btn-svc-edit" onclick="openEditServiceModal(${s.id})">Edit</button>
+        <button class="btn-svc-toggle ${s.active?'act-cancel':'act-restore'}" style="padding:4px 10px;border-radius:6px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;background:#fff"
+          onclick="toggleService(${s.id},${s.active?0:1})">${s.active?'Deactivate':'Activate'}</button>
+      </td>
+    </tr>`).join('');
+}
+
+function showSvcOk(msg) {
+  const el=document.getElementById('svc-ok');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+function openAddServiceModal() {
+  document.getElementById('svc-edit-id').value='';
+  document.getElementById('svc-modal-title').textContent='Add Service';
+  document.getElementById('svc-name').value='';
+  document.getElementById('svc-price').value='';
+  document.getElementById('svc-duration').value='30';
+  document.getElementById('svc-desc').value='';
+  document.getElementById('svc-err').classList.remove('show');
+  openModal('add-svc-modal');
+}
+
+function openEditServiceModal(id) {
+  const s = allServices.find(x=>x.id===id); if(!s)return;
+  document.getElementById('svc-edit-id').value=id;
+  document.getElementById('svc-modal-title').textContent=`Edit — ${s.name}`;
+  document.getElementById('svc-name').value=s.name;
+  document.getElementById('svc-price').value=(s.price_cents/100).toFixed(2);
+  document.getElementById('svc-duration').value=s.duration_min;
+  document.getElementById('svc-desc').value=s.description||'';
+  document.getElementById('svc-err').classList.remove('show');
+  openModal('add-svc-modal');
+}
+
+async function saveService() {
+  const id        = document.getElementById('svc-edit-id').value;
+  const name      = document.getElementById('svc-name').value.trim();
+  const price     = parseFloat(document.getElementById('svc-price').value);
+  const duration  = parseInt(document.getElementById('svc-duration').value);
+  const desc      = document.getElementById('svc-desc').value.trim();
+  const errEl     = document.getElementById('svc-err');
+  errEl.classList.remove('show');
+  if (!name||isNaN(price)||price<0){errEl.textContent='Name and a valid price are required.';errEl.classList.add('show');return;}
+  const btn=document.getElementById('btn-svc-save');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Saving…';
+  const body={name,price_cents:Math.round(price*100),duration_min:duration||30,description:desc};
+  const url  = id ? `/api/admin/services/${id}` : '/api/admin/services';
+  const method=id?'PATCH':'POST';
+  try{
+    const res=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error);
+    closeModal('add-svc-modal');
+    showSvcOk(id?'Service updated.':'Service added.');
+    loadServices();
+  }catch(e){errEl.textContent=e.message;errEl.classList.add('show');}
+  btn.disabled=false;btn.textContent='Save Service';
+}
+
+async function toggleService(id, active) {
+  await fetch(`/api/admin/services/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active})});
+  showSvcOk(active?'Service activated.':'Service deactivated.');
+  loadServices();
+}
+
+// ── Walk-in booking ────────────────────────────────────────
+const ALL_TIMES_WI=[];
+for(let h=9;h<17;h++){ALL_TIMES_WI.push(`${String(h).padStart(2,'0')}:00`);ALL_TIMES_WI.push(`${String(h).padStart(2,'0')}:30`);}
+
+async function openWalkinModal() {
+  document.getElementById('wi-name').value='';
+  document.getElementById('wi-phone').value='';
+  document.getElementById('wi-email').value='';
+  document.getElementById('wi-notes').value='';
+  document.getElementById('wi-date').value=localDateStr();
+  document.getElementById('wi-err').classList.remove('show');
+  document.getElementById('wi-ok').classList.remove('show');
+  await loadWalkinSlots();
+  openModal('walkin-modal');
+}
+
+async function loadWalkinSlots() {
+  const date   = document.getElementById('wi-date').value;
+  const barber = document.getElementById('wi-barber').value;
+  const sel    = document.getElementById('wi-time');
+  sel.innerHTML='';
+  let slots = ALL_TIMES_WI;
+  if (date) {
+    const url  = `/api/availability?date=${date}${barber?`&stylist_id=${barber}`:''}`;
+    const data = await fetch(url).then(r=>r.json()).catch(()=>({slots:ALL_TIMES_WI}));
+    slots = data.slots || ALL_TIMES_WI;
+  }
+  if(!slots.length){const o=document.createElement('option');o.textContent='No slots available';sel.appendChild(o);return;}
+  slots.forEach(s=>{const o=document.createElement('option');o.value=s;const[h,m]=s.split(':').map(Number);o.textContent=`${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;sel.appendChild(o);});
+}
+
+async function saveWalkin() {
+  const name    = document.getElementById('wi-name').value.trim();
+  const email   = document.getElementById('wi-email').value.trim();
+  const phone   = document.getElementById('wi-phone').value.trim();
+  const service = document.getElementById('wi-service').value;
+  const barber  = document.getElementById('wi-barber').value;
+  const date    = document.getElementById('wi-date').value;
+  const time    = document.getElementById('wi-time').value;
+  const notes   = document.getElementById('wi-notes').value.trim();
+  const errEl   = document.getElementById('wi-err');
+  errEl.classList.remove('show');
+  if(!name||!email||!service||!date||!time){errEl.textContent='Name, email, service, date and time are required.';errEl.classList.add('show');return;}
+  const btn=document.getElementById('btn-wi-save');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Creating…';
+  try{
+    const res=await fetch('/api/admin/bookings/create',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({customer_name:name,customer_email:email,customer_phone:phone,service_id:parseInt(service),stylist_id:barber?parseInt(barber):null,appointment_date:date,appointment_time:time,notes})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error);
+    document.getElementById('wi-ok').textContent=`Booking #${data.id} created!`;
+    document.getElementById('wi-ok').classList.add('show');
+    setTimeout(()=>{closeModal('walkin-modal');loadBookings();},1500);
+  }catch(e){errEl.textContent=e.message;errEl.classList.add('show');}
+  btn.disabled=false;btn.textContent='Create Booking';
 }
 </script>
 </body>
