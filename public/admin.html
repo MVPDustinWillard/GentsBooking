@@ -143,6 +143,47 @@
     @media(max-width:700px){.sidebar{display:none}.main{margin-left:0;overflow-x:hidden}}
     .spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:5px}
     @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── Schedule view ── */
+    .schedule-day{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
+    .schedule-col{flex:0 0 220px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .schedule-col-hdr{background:#1a1a1a;color:#fff;padding:10px 12px;font-size:13px;font-weight:700}
+    .schedule-slot{padding:8px 12px;border-bottom:1px solid #f5f5f5;font-size:12px}
+    .schedule-slot.blocked{background:#fef9f0;color:#a16207}
+    .schedule-slot.booked{background:#f0f9ff;cursor:pointer}
+    .schedule-slot.booked:hover{background:#e0f0fa}
+    .schedule-slot-time{font-weight:700;font-size:11px;color:#888;margin-bottom:2px}
+    .schedule-slot-name{font-weight:600;color:#1a1a1a;font-size:13px}
+    .schedule-slot-svc{font-size:11px;color:#666}
+    .schedule-slot-status{display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;text-transform:uppercase;margin-top:3px}
+
+    /* ── Blocked times view ── */
+    .bt-list{display:flex;flex-direction:column;gap:8px;max-width:700px}
+    .bt-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .bt-info{flex:1}
+    .bt-date{font-weight:700;font-size:14px}
+    .bt-time{font-size:13px;color:#666;margin-top:2px}
+    .bt-reason{font-size:12px;color:#999;margin-top:4px;font-style:italic}
+    .btn-del-bt{padding:5px 12px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
+    .btn-del-bt:hover{background:#dc2626;color:#fff}
+    .bt-add-form{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;max-width:700px;margin-bottom:20px}
+    .bt-add-form h3{font-size:14px;font-weight:700;margin-bottom:14px}
+    .bt-add-row{display:grid;grid-template-columns:1fr 1fr 1fr 2fr auto;gap:10px;align-items:end}
+    @media(max-width:900px){.bt-add-row{grid-template-columns:1fr 1fr;}.bt-add-row>:last-child{grid-column:1/-1}}
+
+    /* ── Visit stats ── */
+    .visit-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+    .visit-stat{background:#f5f5f0;border-radius:8px;padding:12px 14px;text-align:center}
+    .visit-stat-val{font-size:20px;font-weight:700;color:#1a1a1a}
+    .visit-stat-lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+    /* ── Badges ── */
+    .badge-no_show{background:#f3e8ff;color:#7c3aed}
+    .act-noshow{border-color:#7c3aed;color:#7c3aed}.act-noshow:hover{background:#7c3aed;color:#fff}
+    .act-remind{border-color:#0284c7;color:#0284c7}.act-remind:hover{background:#0284c7;color:#fff}
+
+    /* ── Broadcast modal ── */
+    .broadcast-note{font-size:12px;color:#888;margin-top:4px}
   </style>
 </head>
 <body>
@@ -167,8 +208,12 @@
     <a class="nav-link"        id="nav-upcoming" onclick="showView('upcoming','Upcoming',this)">🗓 Upcoming</a>
     <div class="nav-section" id="nav-team-section" style="display:none">Team</div>
     <a class="nav-link" id="nav-team" style="display:none" onclick="showView('team','Team Management',this)">👥 Manage Team</a>
+    <a class="nav-link" id="nav-schedule" style="display:none" onclick="showView('schedule','Daily Schedule',this)">📆 Daily Schedule</a>
     <div class="nav-section">Customers</div>
     <a class="nav-link" id="nav-customers" onclick="showView('customers','Customers',this)">👤 Customers</a>
+    <a class="nav-link" id="nav-broadcast" style="display:none" onclick="openBroadcastModal()">📣 Send Broadcast</a>
+    <div class="nav-section">My Schedule</div>
+    <a class="nav-link" id="nav-blocked" onclick="showView('blocked','Block Off Time',this)">🚫 Block Off Time</a>
     <div class="nav-section">Quick Links</div>
     <a class="nav-link" href="/booking" target="_blank">+ New Booking</a>
   </div>
@@ -254,6 +299,50 @@
       <div class="alert alert-success" id="team-ok" style="margin-bottom:16px"></div>
       <div class="team-grid" id="team-grid">
         <div style="color:#888;font-size:14px">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Schedule view (admin only) -->
+    <div class="view" id="view-schedule">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+        <input type="date" id="sched-date" class="filter-date" onchange="loadSchedule()">
+        <span style="font-size:13px;color:#888">Click a booking to reassign it</span>
+      </div>
+      <div id="sched-container">
+        <p style="color:#888;font-size:14px">Select a date to view the schedule.</p>
+      </div>
+    </div>
+
+    <!-- Block off time view (all staff) -->
+    <div class="view" id="view-blocked">
+      <div class="bt-add-form">
+        <h3>Block Off Time</h3>
+        <div class="bt-add-row">
+          <div>
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;display:block;margin-bottom:4px">Date</label>
+            <input type="date" id="bt-date" class="filter-date" style="width:100%">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;display:block;margin-bottom:4px">From</label>
+            <select id="bt-start" class="filter-select" style="width:100%"></select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;display:block;margin-bottom:4px">To</label>
+            <select id="bt-end" class="filter-select" style="width:100%"></select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;display:block;margin-bottom:4px">Reason (optional)</label>
+            <input type="text" id="bt-reason" placeholder="e.g. Lunch, Out sick…" class="filter-select" style="width:100%;height:38px">
+          </div>
+          <div>
+            <button onclick="addBlockedTime()" style="padding:9px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;height:38px">Block Time</button>
+          </div>
+        </div>
+        <div class="alert alert-error" id="bt-err" style="margin-top:12px"></div>
+        <div class="alert alert-success" id="bt-ok" style="margin-top:12px"></div>
+      </div>
+      <div id="bt-list-wrap" class="bt-list">
+        <div style="color:#888;font-size:14px">Loading…</div>
       </div>
     </div>
 
@@ -360,6 +449,12 @@
   </div>
   <div style="padding:20px">
     <div class="alert alert-success" id="cd-ok" style="margin-bottom:12px"></div>
+    <!-- Visit stats -->
+    <div class="visit-stats" id="cd-stats" style="margin-bottom:16px">
+      <div class="visit-stat"><div class="visit-stat-val" id="cd-total-visits">—</div><div class="visit-stat-lbl">Total Visits</div></div>
+      <div class="visit-stat"><div class="visit-stat-val" id="cd-total-spent">—</div><div class="visit-stat-lbl">Total Spent</div></div>
+      <div class="visit-stat"><div class="visit-stat-val" id="cd-last-visit">—</div><div class="visit-stat-lbl">Last Visit</div></div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
       <div>
         <label style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.5px">Phone</label>
@@ -370,10 +465,37 @@
         <input type="text" id="cd-name-input" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px" onblur="saveCustField('name',this.value)">
       </div>
     </div>
-    <div style="margin-bottom:18px">
+    <div style="margin-bottom:14px">
       <label style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.5px">Notes</label>
-      <textarea id="cd-notes" rows="5" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;resize:vertical;box-sizing:border-box" placeholder="Preferred style, allergies, preferences…" onblur="saveCustField('notes',this.value)"></textarea>
+      <textarea id="cd-notes" rows="3" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;resize:vertical;box-sizing:border-box" placeholder="General notes about this customer…" onblur="saveCustField('notes',this.value)"></textarea>
+    </div>
+    <div style="margin-bottom:18px">
+      <label style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.5px">Preferences &amp; Attachments</label>
+      <textarea id="cd-preferences" rows="3" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;resize:vertical;box-sizing:border-box" placeholder="e.g. #2 on sides, scissors on top, no clippers on neck…" onblur="saveCustField('preferences',this.value)"></textarea>
       <div style="font-size:11px;color:#888;margin-top:4px">Auto-saved on blur</div>
+    </div>
+    <!-- Marketing & status toggles (admin only) -->
+    <div id="cd-admin-controls" style="display:none;margin-bottom:18px;display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f9f9f9;border:1px solid #e4e4e4;border-radius:8px;margin-bottom:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600">Marketing Opt-In</div>
+          <div style="font-size:12px;color:#888">Can receive promotional messages</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px">
+          <input type="checkbox" id="cd-marketing" onchange="saveCustField('marketing_opt_in',this.checked)" style="opacity:0;width:0;height:0">
+          <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s" id="cd-marketing-slider"></span>
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f9f9f9;border:1px solid #e4e4e4;border-radius:8px;margin-bottom:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#dc2626">Block Online Booking</div>
+          <div style="font-size:12px;color:#888">Customer cannot book online</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px">
+          <input type="checkbox" id="cd-blocked" onchange="saveCustField('blocked',this.checked)" style="opacity:0;width:0;height:0">
+          <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span>
+        </label>
+      </div>
     </div>
     <div id="cd-merge-wrap" style="margin-bottom:20px;display:none">
       <button onclick="openMergeModal()" style="padding:8px 16px;background:#fff;border:2px solid #8b1a1a;color:#8b1a1a;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Merge with another account…</button>
@@ -386,6 +508,7 @@
           <th style="padding:8px 10px">Service</th>
           <th style="padding:8px 10px">Barber</th>
           <th style="padding:8px 10px">Status</th>
+          <th style="padding:8px 10px">$</th>
         </tr>
       </thead>
       <tbody id="cd-bookings"></tbody>
@@ -436,6 +559,72 @@
   </div>
 </div>
 
+<!-- ── Broadcast Modal ── -->
+<div class="modal-overlay" id="broadcast-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">Send Broadcast Message</div>
+      <button class="modal-close" onclick="closeModal('broadcast-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error"   id="bc-err"></div>
+      <div class="alert alert-success" id="bc-ok"></div>
+      <div class="field">
+        <label>Subject (email only)</label>
+        <input type="text" id="bc-subject" placeholder="e.g. Special Offer at Gents Barber Shop">
+      </div>
+      <div class="field">
+        <label>Message *</label>
+        <textarea id="bc-message" rows="5" placeholder="Type your message here…"></textarea>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;text-transform:none;letter-spacing:0;font-weight:600;cursor:pointer">
+          <input type="checkbox" id="bc-opt-in-only" checked>
+          Send only to marketing opt-in customers
+        </label>
+        <div class="broadcast-note">Uncheck to message all customers with contact info</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeModal('broadcast-modal')">Cancel</button>
+      <button class="btn-modal-save" onclick="sendBroadcast()" id="btn-bc-save">Send Message</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reassign Booking Modal ── -->
+<div class="modal-overlay" id="reassign-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Reassign / Move Booking</div>
+      <button class="modal-close" onclick="closeModal('reassign-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error" id="ra-err"></div>
+      <input type="hidden" id="ra-booking-id">
+      <div id="ra-booking-info" style="background:#f9f9f9;border-radius:8px;padding:12px 14px;font-size:13px;margin-bottom:16px;color:#555"></div>
+      <div class="field">
+        <label>New Barber</label>
+        <select id="ra-barber" class="filter-select" style="width:100%;font-size:14px;padding:9px 12px" onchange="loadReassignTimes()"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>New Date</label>
+          <input type="date" id="ra-date" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px" onchange="loadReassignTimes()">
+        </div>
+        <div class="field">
+          <label>New Time</label>
+          <select id="ra-time" class="filter-select" style="width:100%;font-size:14px;padding:9px 12px"></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeModal('reassign-modal')">Cancel</button>
+      <button class="btn-modal-save" onclick="saveReassign()" id="btn-ra-save">Move Booking</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let me = null;
 let allBarbers = [];
@@ -462,6 +651,8 @@ async function init() {
     document.getElementById('f-barber').style.display = '';
     document.getElementById('nav-team').style.display = '';
     document.getElementById('nav-team-section').style.display = '';
+    document.getElementById('nav-schedule').style.display = '';
+    document.getElementById('nav-broadcast').style.display = '';
     const barbers = await fetch('/api/admin/barbers').then(r=>r.json());
     allBarbers = barbers;
     const sel = document.getElementById('f-barber');
@@ -470,6 +661,20 @@ async function init() {
       o.value = s.id; o.textContent = s.name; sel.appendChild(o);
     });
   }
+  // Populate time-slot selects for block-time form
+  const ALL_SLOTS = [];
+  for (let h=9; h<17; h++) { ALL_SLOTS.push(`${String(h).padStart(2,'0')}:00`); ALL_SLOTS.push(`${String(h).padStart(2,'0')}:30`); }
+  ALL_SLOTS.push('17:00');
+  ['bt-start','bt-end'].forEach(id => {
+    const sel = document.getElementById(id);
+    ALL_SLOTS.forEach(s => {
+      const o = document.createElement('option'); o.value=s;
+      const [h,m] = s.split(':').map(Number);
+      o.textContent = `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+      sel.appendChild(o);
+    });
+  });
+  document.getElementById('bt-end').value = '10:00';
   loadBookings();
 }
 
@@ -487,8 +692,13 @@ function showView(view, title, el) {
   } else {
     dateEl.value = '';
   }
-  if (view === 'team') { loadTeam(); return; }
-  if (view === 'customers') { loadCustomers(); return; }
+  if (view === 'team')     { loadTeam(); return; }
+  if (view === 'customers'){ loadCustomers(); return; }
+  if (view === 'schedule') {
+    if (!document.getElementById('sched-date').value) document.getElementById('sched-date').value = localDateStr();
+    loadSchedule(); return;
+  }
+  if (view === 'blocked')  { loadBlockedTimes(); return; }
   loadBookings();
 }
 
@@ -560,11 +770,25 @@ function renderActions(b) {
   const a = [];
   if (b.status==='pending')    a.push(`<button class="act act-confirm"  onclick="updateBooking(${b.id},'confirmed')">Confirm</button>`);
   if (b.status==='confirmed')  a.push(`<button class="act act-complete" onclick="updateBooking(${b.id},'completed')">Complete</button>`);
-  if (b.status!=='cancelled'&&b.status!=='completed')
+  if (b.status==='confirmed'||b.status==='pending')
+    a.push(`<button class="act act-noshow" onclick="markNoShow(${b.id})">No-Show</button>`);
+  if (b.status!=='cancelled'&&b.status!=='completed'&&b.status!=='no_show')
     a.push(`<button class="act act-cancel" onclick="updateBooking(${b.id},'cancelled')">Cancel</button>`);
-  if (b.status==='cancelled'||b.status==='completed')
+  if (b.status==='cancelled'||b.status==='completed'||b.status==='no_show')
     a.push(`<button class="act act-restore" onclick="updateBooking(${b.id},'pending')">Restore</button>`);
+  a.push(`<button class="act act-remind" onclick="sendRemind(${b.id})" title="Send reminder">📩</button>`);
   return a.join('');
+}
+
+async function markNoShow(id) {
+  if (!confirm('Mark as No-Show and send customer a message?')) return;
+  await fetch(`/api/admin/bookings/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'no_show'})});
+  loadBookings();
+}
+
+async function sendRemind(id) {
+  const r = await fetch(`/api/admin/bookings/${id}/remind`,{method:'POST'});
+  alert(r.ok ? 'Reminder sent!' : 'Could not send reminder (check server config)');
 }
 
 async function updateBooking(id, status) {
@@ -787,24 +1011,49 @@ async function openCustDrawer(email) {
   document.getElementById('cd-name-input').value = data.name || '';
   document.getElementById('cd-phone').value = data.phone || '';
   document.getElementById('cd-notes').value = data.notes || '';
+  document.getElementById('cd-preferences').value = data.preferences || '';
   document.getElementById('cd-ok').textContent = '';
   document.getElementById('cd-merge-wrap').style.display = me.role==='admin' ? '' : 'none';
 
+  // Visit stats
   const bookings = data.bookings || [];
+  const completed = bookings.filter(b=>b.status==='completed'||b.status==='confirmed'||b.status==='no_show');
+  const totalSpent = completed.reduce((s,b)=>s+(b.price_cents||0),0);
+  const lastVisit  = bookings.find(b=>b.appointment_date)?.appointment_date;
+  document.getElementById('cd-total-visits').textContent = bookings.length;
+  document.getElementById('cd-total-spent').textContent  = `$${(totalSpent/100).toFixed(0)}`;
+  document.getElementById('cd-last-visit').textContent   = lastVisit ? fmtDate(lastVisit) : '—';
+
+  // Admin-only controls
+  const adminCtrls = document.getElementById('cd-admin-controls');
+  if (me.role === 'admin') {
+    adminCtrls.style.display = '';
+    document.getElementById('cd-marketing').checked = !!data.marketing_opt_in;
+    document.getElementById('cd-blocked').checked   = !!data.blocked;
+    // Style the slider background based on checked state
+    document.getElementById('cd-marketing-slider').style.background = data.marketing_opt_in ? '#059669' : '#ccc';
+  } else {
+    adminCtrls.style.display = 'none';
+  }
+
   document.getElementById('cd-bookings').innerHTML = bookings.length
     ? bookings.map(b=>`<tr style="border-bottom:1px solid #eee">
-        <td style="padding:8px 10px">${fmtDate(b.appointment_date)} ${fmtTime(b.appointment_time)}</td>
+        <td style="padding:8px 10px;white-space:nowrap">${fmtDate(b.appointment_date)}<br><span style="font-size:11px;color:#888">${fmtTime(b.appointment_time)}</span></td>
         <td style="padding:8px 10px">${esc(b.service_name)||'—'}</td>
         <td style="padding:8px 10px">${esc(b.stylist_name)||'Any'}</td>
-        <td style="padding:8px 10px"><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${b.status==='confirmed'?'#d4edda':b.status==='cancelled'?'#f8d7da':'#fff3cd'};color:${b.status==='confirmed'?'#155724':b.status==='cancelled'?'#721c24':'#856404'}">${b.status}</span></td>
+        <td style="padding:8px 10px"><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusBg(b.status)};color:${statusFg(b.status)}">${b.status}</span></td>
+        <td style="padding:8px 10px;font-weight:600;font-size:12px">${b.price_cents?'$'+(b.price_cents/100).toFixed(0):'—'}</td>
       </tr>`).join('')
-    : '<tr><td colspan="4" style="padding:16px;color:#888;text-align:center">No bookings yet</td></tr>';
+    : '<tr><td colspan="5" style="padding:16px;color:#888;text-align:center">No bookings yet</td></tr>';
 
   const overlay = document.getElementById('cust-drawer-overlay');
   const drawer = document.getElementById('cust-drawer');
   overlay.style.display = 'block';
   drawer.style.display = 'flex';
 }
+
+function statusBg(s){return s==='confirmed'?'#d4edda':s==='cancelled'?'#f8d7da':s==='completed'?'#e0e7ff':s==='no_show'?'#f3e8ff':'#fff3cd'}
+function statusFg(s){return s==='confirmed'?'#155724':s==='cancelled'?'#721c24':s==='completed'?'#4f46e5':s==='no_show'?'#7c3aed':'#856404'}
 
 function closeCustDrawer() {
   document.getElementById('cust-drawer-overlay').style.display = 'none';
@@ -902,9 +1151,214 @@ async function confirmMerge() {
   setTimeout(() => {
     closeModal('merge-modal');
     loadCustomers();
-    // Reopen drawer with canonical account
     openCustDrawer(keep_email);
   }, 1200);
+}
+
+// ── Broadcast ──────────────────────────────────────────────
+function openBroadcastModal() {
+  document.getElementById('bc-err').classList.remove('show');
+  document.getElementById('bc-ok').classList.remove('show');
+  document.getElementById('bc-message').value = '';
+  document.getElementById('bc-subject').value = '';
+  document.getElementById('bc-opt-in-only').checked = true;
+  openModal('broadcast-modal');
+}
+
+async function sendBroadcast() {
+  const message    = document.getElementById('bc-message').value.trim();
+  const subject    = document.getElementById('bc-subject').value.trim();
+  const opt_in_only = document.getElementById('bc-opt-in-only').checked;
+  const errEl = document.getElementById('bc-err');
+  const okEl  = document.getElementById('bc-ok');
+  errEl.classList.remove('show'); okEl.classList.remove('show');
+  if (!message) { errEl.textContent='Message is required.'; errEl.classList.add('show'); return; }
+  const btn = document.getElementById('btn-bc-save');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Sending…';
+  try {
+    const r = await fetch('/api/admin/customers/broadcast',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,subject,opt_in_only})});
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    okEl.textContent=`Sent to ${data.sent} of ${data.total} customers.`; okEl.classList.add('show');
+    setTimeout(()=>closeModal('broadcast-modal'),2500);
+  } catch(e){ errEl.textContent=e.message; errEl.classList.add('show'); }
+  btn.disabled=false; btn.textContent='Send Message';
+}
+
+// ── Schedule view ──────────────────────────────────────────
+let scheduleData = null;
+
+async function loadSchedule() {
+  const date = document.getElementById('sched-date').value;
+  if (!date) return;
+  const data = await fetch(`/api/admin/schedule?date=${date}`).then(r=>r.json());
+  scheduleData = data;
+  renderSchedule(data);
+}
+
+function renderSchedule(data) {
+  const { barbers, bookings, blocks } = data;
+  const container = document.getElementById('sched-container');
+  if (!barbers.length) { container.innerHTML='<p style="color:#888">No active barbers found.</p>'; return; }
+
+  const ALL_TIMES = [];
+  for (let h=9; h<17; h++) { ALL_TIMES.push(`${String(h).padStart(2,'0')}:00`); ALL_TIMES.push(`${String(h).padStart(2,'0')}:30`); }
+
+  const unassigned = bookings.filter(b=>!b.stylist_id);
+
+  let html = '<div class="schedule-day">';
+  for (const barber of barbers) {
+    const myBookings = bookings.filter(b=>b.stylist_id===barber.id);
+    const myBlocks   = blocks.filter(bl=>bl.stylist_id===barber.id);
+    html += `<div class="schedule-col">
+      <div class="schedule-col-hdr">${esc(barber.name)}</div>`;
+    for (const slot of ALL_TIMES) {
+      const bk  = myBookings.find(b=>b.appointment_time===slot);
+      const blk = myBlocks.find(bl=>slot>=bl.block_start && slot<bl.block_end);
+      if (bk) {
+        html += `<div class="schedule-slot booked" onclick="openReassignModal(${bk.id})">
+          <div class="schedule-slot-time">${fmtTime(slot)}</div>
+          <div class="schedule-slot-name">${esc(bk.customer_name)}</div>
+          <div class="schedule-slot-svc">${esc(bk.service_name)}</div>
+          <span class="schedule-slot-status badge badge-${bk.status}">${bk.status}</span>
+        </div>`;
+      } else if (blk) {
+        html += `<div class="schedule-slot blocked">
+          <div class="schedule-slot-time">${fmtTime(slot)}</div>
+          <div style="font-size:12px;font-weight:600">🚫 Blocked</div>
+          ${blk.reason?`<div style="font-size:11px;color:#a16207">${esc(blk.reason)}</div>`:''}
+        </div>`;
+      } else {
+        html += `<div class="schedule-slot"><div class="schedule-slot-time" style="color:#ccc">${fmtTime(slot)}</div></div>`;
+      }
+    }
+    html += `</div>`;
+  }
+  // Unassigned column
+  if (unassigned.length) {
+    html += `<div class="schedule-col">
+      <div class="schedule-col-hdr" style="background:#666">Unassigned</div>`;
+    for (const bk of unassigned) {
+      html += `<div class="schedule-slot booked" onclick="openReassignModal(${bk.id})">
+        <div class="schedule-slot-time">${fmtTime(bk.appointment_time)}</div>
+        <div class="schedule-slot-name">${esc(bk.customer_name)}</div>
+        <div class="schedule-slot-svc">${esc(bk.service_name)}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ── Reassign booking ───────────────────────────────────────
+let reassignBooking = null;
+
+async function openReassignModal(bookingId) {
+  reassignBooking = scheduleData?.bookings.find(b=>b.id===bookingId);
+  if (!reassignBooking) return;
+  const b = reassignBooking;
+  document.getElementById('ra-booking-id').value = bookingId;
+  document.getElementById('ra-booking-info').innerHTML =
+    `<strong>${esc(b.customer_name)}</strong> · ${esc(b.service_name)}<br><span style="color:#888">${fmtDate(b.appointment_date)} at ${fmtTime(b.appointment_time)}</span>`;
+  document.getElementById('ra-err').classList.remove('show');
+  // Populate barber select
+  const barberSel = document.getElementById('ra-barber');
+  barberSel.innerHTML = `<option value="">Unassigned</option>` +
+    allBarbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active)
+      .map(s=>`<option value="${s.id}" ${b.stylist_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
+  // Set date and populate times
+  document.getElementById('ra-date').value = b.appointment_date;
+  await loadReassignTimes();
+  document.getElementById('ra-time').value = b.appointment_time;
+  openModal('reassign-modal');
+}
+
+async function loadReassignTimes() {
+  const date    = document.getElementById('ra-date').value;
+  const barber  = document.getElementById('ra-barber').value;
+  const timeSel = document.getElementById('ra-time');
+  const currentTime = timeSel.value;
+  timeSel.innerHTML = '';
+  const ALL_TIMES = [];
+  for (let h=9;h<17;h++){ALL_TIMES.push(`${String(h).padStart(2,'0')}:00`);ALL_TIMES.push(`${String(h).padStart(2,'0')}:30`);}
+  let available = ALL_TIMES;
+  if (date) {
+    const url = `/api/availability?date=${date}${barber?`&stylist_id=${barber}`:''}`;
+    const avData = await fetch(url).then(r=>r.json()).catch(()=>({slots:ALL_TIMES}));
+    // Include current booking's own time even if "taken"
+    const current = reassignBooking?.appointment_time;
+    available = ALL_TIMES.filter(t=>avData.slots.includes(t)||(reassignBooking?.appointment_date===date&&t===current));
+  }
+  available.forEach(s => {
+    const o = document.createElement('option'); o.value=s;
+    const [h,m]=s.split(':').map(Number);
+    o.textContent=`${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+    timeSel.appendChild(o);
+  });
+  if (currentTime && available.includes(currentTime)) timeSel.value = currentTime;
+}
+
+async function saveReassign() {
+  const id     = document.getElementById('ra-booking-id').value;
+  const barber = document.getElementById('ra-barber').value;
+  const date   = document.getElementById('ra-date').value;
+  const time   = document.getElementById('ra-time').value;
+  const errEl  = document.getElementById('ra-err');
+  errEl.classList.remove('show');
+  const btn = document.getElementById('btn-ra-save');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving…';
+  try {
+    const r = await fetch(`/api/admin/bookings/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({stylist_id:barber?parseInt(barber):null,appointment_date:date,appointment_time:time})});
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    closeModal('reassign-modal');
+    loadSchedule();
+  } catch(e){ errEl.textContent=e.message; errEl.classList.add('show'); }
+  btn.disabled=false; btn.textContent='Move Booking';
+}
+
+// ── Blocked times ──────────────────────────────────────────
+async function loadBlockedTimes() {
+  const list = await fetch('/api/barber/blocked-times').then(r=>r.json());
+  const wrap = document.getElementById('bt-list-wrap');
+  if (!list.length) { wrap.innerHTML='<p style="color:#888;font-size:14px">No blocked times set. Use the form above to block off time.</p>'; return; }
+  wrap.innerHTML = list.map(bt=>`
+    <div class="bt-item">
+      <div class="bt-info">
+        <div class="bt-date">${fmtDate(bt.block_date)}</div>
+        <div class="bt-time">${fmtTime(bt.block_start)} – ${fmtTime(bt.block_end)}</div>
+        ${bt.reason?`<div class="bt-reason">${esc(bt.reason)}</div>`:''}
+      </div>
+      <button class="btn-del-bt" onclick="deleteBlockedTime(${bt.id})">Remove</button>
+    </div>`).join('');
+}
+
+async function addBlockedTime() {
+  const date  = document.getElementById('bt-date').value;
+  const start = document.getElementById('bt-start').value;
+  const end   = document.getElementById('bt-end').value;
+  const reason= document.getElementById('bt-reason').value.trim();
+  const errEl = document.getElementById('bt-err');
+  const okEl  = document.getElementById('bt-ok');
+  errEl.classList.remove('show'); okEl.classList.remove('show');
+  if (!date) { errEl.textContent='Please select a date.'; errEl.classList.add('show'); return; }
+  if (start >= end) { errEl.textContent='Start time must be before end time.'; errEl.classList.add('show'); return; }
+  const r = await fetch('/api/barber/blocked-times',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({block_date:date,block_start:start,block_end:end,reason})});
+  const data = await r.json();
+  if (!r.ok) { errEl.textContent=data.error; errEl.classList.add('show'); return; }
+  okEl.textContent='Time blocked successfully.'; okEl.classList.add('show');
+  setTimeout(()=>okEl.classList.remove('show'),3000);
+  document.getElementById('bt-date').value='';
+  document.getElementById('bt-reason').value='';
+  loadBlockedTimes();
+}
+
+async function deleteBlockedTime(id) {
+  if (!confirm('Remove this blocked time?')) return;
+  await fetch(`/api/barber/blocked-times/${id}`,{method:'DELETE'});
+  loadBlockedTimes();
 }
 </script>
 </body>

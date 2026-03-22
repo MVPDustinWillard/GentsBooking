@@ -1391,3 +1391,464 @@ test.describe('E2E — Admin UI', () => {
     }
   });
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// NEW FEATURES — API Tests
+// ════════════════════════════════════════════════════════════════════════════
+
+test.describe('Feature 1 — Reminders', () => {
+  test.use(DESKTOP);
+
+  test('F1-01: Manual remind endpoint requires admin auth', async ({ page }) => {
+    const res = await page.request.post(`${BASE}/api/admin/bookings/1/remind`);
+    expect(res.status()).toBe(401);
+  });
+
+  test('F1-02: Manual remind on non-existent booking returns 404', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res = await page.request.post(`${BASE}/api/admin/bookings/999999/remind`);
+    expect(res.status()).toBe(404);
+  });
+
+  test('F1-03: Manual remind on real booking returns ok', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    // Create a booking first
+    const bkRes = await makeBooking(page, { name:'Remind Test', email:`remind_${Date.now()}@test.com`, phone:'6031110001' });
+    const bk    = await bkRes.json();
+    const res   = await page.request.post(`${BASE}/api/admin/bookings/${bk.id}/remind`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+  });
+});
+
+test.describe('Feature 2 — Block Clients', () => {
+  test.use(DESKTOP);
+
+  test('F2-01: Blocked customer cannot book online', async ({ page }) => {
+    const email = `blocked_${Date.now()}@test.com`;
+    // Create customer via a booking
+    const slot = nextSlot();
+    await page.request.post(`${BASE}/api/bookings`, { data: {
+      customer_name:'Block Test', customer_email:email, customer_phone:'6030000001',
+      service_id:1, stylist_id:slot.stylist_id, appointment_date:slot.date, appointment_time:slot.time
+    }});
+    // Login as admin and block the customer
+    await login(page, 'admin', 'admin123');
+    const patchRes = await page.request.patch(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`, {
+      data: { blocked: true }
+    });
+    expect(patchRes.status()).toBe(200);
+    const patched = await patchRes.json();
+    expect(patched.blocked).toBe(1);
+    // Now try to book again — should be blocked
+    const slot2 = nextSlot();
+    const bookRes = await page.request.post(`${BASE}/api/bookings`, { data: {
+      customer_name:'Block Test', customer_email:email, customer_phone:'6030000001',
+      service_id:1, stylist_id:slot2.stylist_id, appointment_date:slot2.date, appointment_time:slot2.time
+    }});
+    expect(bookRes.status()).toBe(403);
+    const err = await bookRes.json();
+    expect(err.error).toContain('not available');
+  });
+
+  test('F2-02: Unblocking customer restores booking ability', async ({ page }) => {
+    const email = `unblock_${Date.now()}@test.com`;
+    const slot = nextSlot();
+    // Create + book initial
+    await page.request.post(`${BASE}/api/bookings`, { data: {
+      customer_name:'Unblock Test', customer_email:email, customer_phone:'6030000002',
+      service_id:1, stylist_id:slot.stylist_id, appointment_date:slot.date, appointment_time:slot.time
+    }});
+    await login(page, 'admin', 'admin123');
+    // Block then unblock
+    await page.request.patch(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`, { data:{ blocked:true } });
+    await page.request.patch(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`, { data:{ blocked:false } });
+    // Should be able to book again
+    const slot2 = nextSlot();
+    const bookRes = await page.request.post(`${BASE}/api/bookings`, { data: {
+      customer_name:'Unblock Test', customer_email:email, customer_phone:'6030000002',
+      service_id:1, stylist_id:slot2.stylist_id, appointment_date:slot2.date, appointment_time:slot2.time
+    }});
+    expect(bookRes.status()).toBe(201);
+  });
+
+  test('F2-03: Unknown customer is not blocked by default', async ({ page }) => {
+    const slot = nextSlot();
+    const res = await page.request.post(`${BASE}/api/bookings`, { data: {
+      customer_name:'Brand New', customer_email:`brandnew_${Date.now()}@test.com`, customer_phone:'',
+      service_id:1, stylist_id:slot.stylist_id, appointment_date:slot.date, appointment_time:slot.time
+    }});
+    expect(res.status()).toBe(201);
+  });
+});
+
+test.describe('Feature 3 — No-Show', () => {
+  test.use(DESKTOP);
+
+  test('F3-01: Booking can be marked as no_show', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const bkRes = await makeBooking(page, { name:'NoShow Customer', email:`noshow_${Date.now()}@test.com` });
+    const bk    = await bkRes.json();
+    const res = await page.request.patch(`${BASE}/api/admin/bookings/${bk.id}`, {
+      data: { status:'no_show' }
+    });
+    expect(res.status()).toBe(200);
+    const updated = await res.json();
+    expect(updated.status).toBe('no_show');
+  });
+
+  test('F3-02: No-show status is returned in bookings list', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const bkRes = await makeBooking(page, { name:'NS List', email:`nslist_${Date.now()}@test.com` });
+    const bk    = await bkRes.json();
+    await page.request.patch(`${BASE}/api/admin/bookings/${bk.id}`, { data:{ status:'no_show' } });
+    const listRes = await page.request.get(`${BASE}/api/admin/bookings?status=no_show`);
+    const list    = await listRes.json();
+    expect(list.some(b => b.id === bk.id)).toBe(true);
+  });
+});
+
+test.describe('Feature 4 — Marketing Opt-In', () => {
+  test.use(DESKTOP);
+
+  test('F4-01: Customer marketing_opt_in can be set to true', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const email = `mktg_${Date.now()}@test.com`;
+    const slot  = nextSlot();
+    await page.request.post(`${BASE}/api/bookings`, { data: {
+      customer_name:'Marketing User', customer_email:email, customer_phone:'6031110002',
+      service_id:1, stylist_id:slot.stylist_id, appointment_date:slot.date, appointment_time:slot.time
+    }});
+    const res = await page.request.patch(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`, {
+      data: { marketing_opt_in: true }
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.marketing_opt_in).toBe(1);
+  });
+
+  test('F4-02: Broadcast endpoint requires admin auth', async ({ page }) => {
+    const res = await page.request.post(`${BASE}/api/admin/customers/broadcast`, {
+      data: { message:'Hello' }
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test('F4-03: Broadcast with empty message returns 400', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res = await page.request.post(`${BASE}/api/admin/customers/broadcast`, {
+      data: { message:'' }
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  test('F4-04: Broadcast returns sent/total counts', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res = await page.request.post(`${BASE}/api/admin/customers/broadcast`, {
+      data: { message:'Test broadcast', opt_in_only: true }
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(typeof data.sent).toBe('number');
+    expect(typeof data.total).toBe('number');
+  });
+});
+
+test.describe('Feature 5 — Client Preferences', () => {
+  test.use(DESKTOP);
+
+  test('F5-01: Customer preferences can be saved', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const email = `prefs_${Date.now()}@test.com`;
+    const slot  = nextSlot();
+    await page.request.post(`${BASE}/api/bookings`, { data: {
+      customer_name:'Prefs User', customer_email:email, customer_phone:'6031110003',
+      service_id:1, stylist_id:slot.stylist_id, appointment_date:slot.date, appointment_time:slot.time
+    }});
+    const res = await page.request.patch(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`, {
+      data: { preferences:'#2 on sides, scissors on top, tight line-up' }
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.preferences).toBe('#2 on sides, scissors on top, tight line-up');
+  });
+
+  test('F5-02: Preferences persist in customer detail', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const email = `prefs2_${Date.now()}@test.com`;
+    const slot  = nextSlot();
+    await page.request.post(`${BASE}/api/bookings`, { data: {
+      customer_name:'Prefs User 2', customer_email:email, customer_phone:'',
+      service_id:1, stylist_id:slot.stylist_id, appointment_date:slot.date, appointment_time:slot.time
+    }});
+    await page.request.patch(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`, {
+      data: { preferences:'low fade, beard taper' }
+    });
+    const res  = await page.request.get(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`);
+    const data = await res.json();
+    expect(data.preferences).toBe('low fade, beard taper');
+  });
+});
+
+test.describe('Feature 6 — Visit History & Stats', () => {
+  test.use(DESKTOP);
+
+  test('F6-01: Customer detail includes booking history', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const email = `hist_${Date.now()}@test.com`;
+    const slot  = nextSlot();
+    await page.request.post(`${BASE}/api/bookings`, { data: {
+      customer_name:'History User', customer_email:email, customer_phone:'6031110004',
+      service_id:1, stylist_id:slot.stylist_id, appointment_date:slot.date, appointment_time:slot.time
+    }});
+    const res  = await page.request.get(`${BASE}/api/admin/customers/${encodeURIComponent(email)}`);
+    const data = await res.json();
+    expect(Array.isArray(data.bookings)).toBe(true);
+    expect(data.bookings.length).toBeGreaterThanOrEqual(1);
+    expect(data.bookings[0]).toHaveProperty('service_name');
+    expect(data.bookings[0]).toHaveProperty('price_cents');
+    expect(data.bookings[0]).toHaveProperty('stylist_name');
+  });
+
+  test('F6-02: Customer list includes booking_count and last_visit', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res  = await page.request.get(`${BASE}/api/admin/customers`);
+    const list = await res.json();
+    expect(list.length).toBeGreaterThan(0);
+    const c = list[0];
+    expect(c).toHaveProperty('booking_count');
+    expect(c).toHaveProperty('last_visit');
+  });
+});
+
+test.describe('Feature 7 — Barber Blocked Times', () => {
+  test.use(DESKTOP);
+
+  test('F7-01: Barber can add a blocked time', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    const res = await page.request.post(`${BASE}/api/barber/blocked-times`, {
+      data: { block_date:'2030-06-15', block_start:'12:00', block_end:'13:00', reason:'Lunch' }
+    });
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.block_date).toBe('2030-06-15');
+    expect(data.block_start).toBe('12:00');
+    expect(data.reason).toBe('Lunch');
+  });
+
+  test('F7-02: Barber can list their blocked times', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    const res  = await page.request.get(`${BASE}/api/barber/blocked-times`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  test('F7-03: block_start must be before block_end (400)', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    const res = await page.request.post(`${BASE}/api/barber/blocked-times`, {
+      data: { block_date:'2030-06-15', block_start:'14:00', block_end:'12:00' }
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  test('F7-04: Missing fields return 400', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    const res = await page.request.post(`${BASE}/api/barber/blocked-times`, {
+      data: { block_date:'2030-06-15' }
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  test('F7-05: Blocked slot is removed from availability', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    const me = await page.request.get(`${BASE}/api/auth/me`).then(r=>r.json());
+    // Block 14:00-15:00 on a specific future date
+    const blockDate = '2031-07-01';
+    await page.request.post(`${BASE}/api/barber/blocked-times`, {
+      data: { block_date:blockDate, block_start:'14:00', block_end:'15:00', reason:'Test block' }
+    });
+    // Check availability for that barber on that date
+    const avRes  = await page.request.get(`${BASE}/api/availability?date=${blockDate}&stylist_id=${me.id}`);
+    const avData = await avRes.json();
+    expect(avData.slots).not.toContain('14:00');
+    expect(avData.slots).not.toContain('14:30');
+    expect(avData.slots).toContain('15:00'); // 15:00 is after block ends
+  });
+
+  test('F7-06: Barber can delete their blocked time', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    const addRes = await page.request.post(`${BASE}/api/barber/blocked-times`, {
+      data: { block_date:'2030-08-01', block_start:'09:00', block_end:'10:00', reason:'Delete test' }
+    });
+    const bt = await addRes.json();
+    const delRes = await page.request.delete(`${BASE}/api/barber/blocked-times/${bt.id}`);
+    expect(delRes.status()).toBe(200);
+  });
+
+  test('F7-07: Barber cannot delete another barbers blocked time', async ({ page }) => {
+    // Marcus adds a block, James tries to delete it
+    await login(page, 'marcus', 'marcus123');
+    const addRes = await page.request.post(`${BASE}/api/barber/blocked-times`, {
+      data: { block_date:'2030-09-10', block_start:'10:00', block_end:'11:00' }
+    });
+    const bt = await addRes.json();
+    await login(page, 'james', 'james123');
+    const delRes = await page.request.delete(`${BASE}/api/barber/blocked-times/${bt.id}`);
+    expect(delRes.status()).toBe(403);
+  });
+
+  test('F7-08: Admin can view all blocked times', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res = await page.request.get(`${BASE}/api/admin/blocked-times`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  test('F7-09: Admin can delete any blocked time', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    const addRes = await page.request.post(`${BASE}/api/barber/blocked-times`, {
+      data: { block_date:'2030-10-01', block_start:'13:00', block_end:'14:00' }
+    });
+    const bt = await addRes.json();
+    await login(page, 'admin', 'admin123');
+    const delRes = await page.request.delete(`${BASE}/api/admin/blocked-times/${bt.id}`);
+    expect(delRes.status()).toBe(200);
+  });
+
+  test('F7-10: Blocked times can be filtered by date', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    await page.request.post(`${BASE}/api/barber/blocked-times`, {
+      data: { block_date:'2031-01-15', block_start:'09:00', block_end:'10:00' }
+    });
+    await login(page, 'admin', 'admin123');
+    const res  = await page.request.get(`${BASE}/api/admin/blocked-times?date=2031-01-15`);
+    const data = await res.json();
+    expect(data.every(bt => bt.block_date === '2031-01-15')).toBe(true);
+  });
+});
+
+test.describe('Feature 8 — Schedule View', () => {
+  test.use(DESKTOP);
+
+  test('F8-01: Schedule endpoint requires auth', async ({ page }) => {
+    const res = await page.request.get(`${BASE}/api/admin/schedule?date=2026-03-21`);
+    expect(res.status()).toBe(401);
+  });
+
+  test('F8-02: Schedule endpoint requires date param', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res = await page.request.get(`${BASE}/api/admin/schedule`);
+    expect(res.status()).toBe(400);
+  });
+
+  test('F8-03: Schedule returns barbers, bookings, blocks, date', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res  = await page.request.get(`${BASE}/api/admin/schedule?date=2026-03-21`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.barbers)).toBe(true);
+    expect(Array.isArray(data.bookings)).toBe(true);
+    expect(Array.isArray(data.blocks)).toBe(true);
+    expect(data.date).toBe('2026-03-21');
+  });
+
+  test('F8-04: Schedule barbers have id, name, photo_url', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const res  = await page.request.get(`${BASE}/api/admin/schedule?date=2026-03-21`);
+    const data = await res.json();
+    if (data.barbers.length) {
+      expect(data.barbers[0]).toHaveProperty('id');
+      expect(data.barbers[0]).toHaveProperty('name');
+      expect(data.barbers[0]).toHaveProperty('photo_url');
+    }
+  });
+
+  test('F8-05: Admin can reassign booking to different barber', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const slot = nextSlot();
+    const bkRes = await makeBooking(page, {
+      name:'Reassign Test', email:`reassign_${Date.now()}@test.com`,
+      date: slot.date, time: slot.time, stylist: 1
+    });
+    const bk = await bkRes.json();
+    // Reassign to barber 2 on same date/time
+    const res = await page.request.patch(`${BASE}/api/admin/bookings/${bk.id}`, {
+      data: { stylist_id: 2 }
+    });
+    expect(res.status()).toBe(200);
+    const updated = await res.json();
+    expect(updated.stylist_id).toBe(2);
+  });
+
+  test('F8-06: Admin can move booking to different date and time', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const slot = nextSlot();
+    const bkRes = await makeBooking(page, {
+      name:'Move Test', email:`move_${Date.now()}@test.com`,
+      date: slot.date, time: slot.time, stylist: 1
+    });
+    const bk    = await bkRes.json();
+    const slot2 = nextSlot();
+    const res   = await page.request.patch(`${BASE}/api/admin/bookings/${bk.id}`, {
+      data: { appointment_date: slot2.date, appointment_time: slot2.time }
+    });
+    expect(res.status()).toBe(200);
+    const updated = await res.json();
+    expect(updated.appointment_date).toBe(slot2.date);
+    expect(updated.appointment_time).toBe(slot2.time);
+  });
+
+  test('F8-07: Moving booking to conflicting slot returns 409', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const slot1 = nextSlot();
+    const slot2 = nextSlot();
+    // Book barber 1 in slot1
+    const bk1Res = await makeBooking(page, {
+      name:'Conflict A', email:`ca_${Date.now()}@test.com`,
+      date: slot1.date, time: slot1.time, stylist: 1
+    });
+    // Book barber 1 in slot2
+    const bk2Res = await makeBooking(page, {
+      name:'Conflict B', email:`cb_${Date.now()}@test.com`,
+      date: slot2.date, time: slot2.time, stylist: 1
+    });
+    const bk1 = await bk1Res.json();
+    const bk2 = await bk2Res.json();
+    // Try to move bk1 to same slot as bk2
+    const res = await page.request.patch(`${BASE}/api/admin/bookings/${bk1.id}`, {
+      data: { stylist_id: 1, appointment_date: bk2.appointment_date, appointment_time: bk2.appointment_time }
+    });
+    expect(res.status()).toBe(409);
+  });
+
+  // E2E: Schedule view renders in browser
+  test('F8-08: Admin schedule view renders in browser', async ({ page }) => {
+    await login(page, 'admin', 'admin123');
+    const navLink = page.locator('#nav-schedule');
+    await expect(navLink).toBeVisible();
+    await navLink.click();
+    const schedDate = page.locator('#sched-date');
+    await expect(schedDate).toBeVisible();
+    await schedDate.fill('2026-03-21');
+    await page.locator('#sched-container').waitFor({ state:'visible' });
+    // After loading, should show barber columns
+    await page.waitForTimeout(1000);
+    const container = await page.locator('#sched-container').innerHTML();
+    expect(container.length).toBeGreaterThan(50);
+  });
+});
+
+test.describe('Feature 7 — Block Time UI', () => {
+  test.use(DESKTOP);
+
+  test('F7-UI-01: Block off time view renders for barber', async ({ page }) => {
+    await login(page, 'marcus', 'marcus123');
+    await page.locator('#nav-blocked').click();
+    await expect(page.locator('#bt-date')).toBeVisible();
+    await expect(page.locator('#bt-start')).toBeVisible();
+    await expect(page.locator('#bt-end')).toBeVisible();
+  });
+});

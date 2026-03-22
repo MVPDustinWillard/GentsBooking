@@ -7,6 +7,7 @@ const multer     = require('multer');
 const twilio     = require('twilio');
 const path       = require('path');
 const fs         = require('fs');
+const cron       = require('node-cron');
 const emailCfg   = require('./email.config');
 
 // ── Twilio SMS client ──────────────────────────────────────────────────────
@@ -75,6 +76,30 @@ db.exec(`
 
 // Migrate: add merged_into column if missing
 try { db.exec("ALTER TABLE customers ADD COLUMN merged_into TEXT DEFAULT NULL"); } catch(_) {}
+try { db.exec("ALTER TABLE customers ADD COLUMN blocked INTEGER DEFAULT 0"); } catch(_) {}
+try { db.exec("ALTER TABLE customers ADD COLUMN marketing_opt_in INTEGER DEFAULT 0"); } catch(_) {}
+try { db.exec("ALTER TABLE customers ADD COLUMN preferences TEXT DEFAULT ''"); } catch(_) {}
+try { db.exec("ALTER TABLE customers ADD COLUMN tags TEXT DEFAULT ''"); } catch(_) {}
+try { db.exec("ALTER TABLE bookings ADD COLUMN no_show_msg_sent INTEGER DEFAULT 0"); } catch(_) {}
+
+// Reminders tracking table
+db.exec(`CREATE TABLE IF NOT EXISTS reminders_sent (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  booking_id    INTEGER NOT NULL,
+  reminder_type TEXT NOT NULL,
+  sent_at       TEXT DEFAULT (datetime('now'))
+);`);
+
+// Barber blocked times
+db.exec(`CREATE TABLE IF NOT EXISTS blocked_times (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  stylist_id  INTEGER NOT NULL REFERENCES stylists(id),
+  block_date  TEXT NOT NULL,
+  block_start TEXT NOT NULL,
+  block_end   TEXT NOT NULL,
+  reason      TEXT DEFAULT '',
+  created_at  TEXT DEFAULT (datetime('now'))
+);`);
 
 // Backfill existing bookings into customers table (idempotent)
 db.prepare(`
@@ -220,6 +245,109 @@ async function sendBookingConfirmation(booking) {
   }
 }
 
+// ── Reminder messages ──────────────────────────────────────────────────────
+async function sendReminderMessage(booking, hoursAhead) {
+  const barber  = booking.stylist_name || 'your barber';
+  const subject = `Reminder: Your appointment at Gents Barber Shop`;
+  const html = `
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
+      <div style="background:#222;padding:24px;text-align:center;border-radius:8px 8px 0 0">
+        <h1 style="color:#fff;margin:0;font-size:22px">✂ Gents Barber Shop</h1>
+        <p style="color:#aaa;margin:6px 0 0;font-size:13px">893 Lafayette Road, Hampton, NH</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e4e4;border-top:none;padding:28px;border-radius:0 0 8px 8px">
+        <h2 style="margin:0 0 6px;color:#1a1a1a">Appointment Reminder</h2>
+        <p style="color:#666;margin:0 0 24px;font-size:14px">Your appointment is coming up in <strong>${hoursAhead} hour${hoursAhead>1?'s':''}</strong>. We look forward to seeing you!</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          <tr><td style="padding:8px 0;color:#888;width:40%">Service</td><td style="padding:8px 0;font-weight:600">${booking.service_name}</td></tr>
+          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Barber</td><td style="padding:8px 0">${barber}</td></tr>
+          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Date</td><td style="padding:8px 0">${fmtDateFn(booking.appointment_date)}</td></tr>
+          <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Time</td><td style="padding:8px 0;font-weight:700">${fmtTimeFn(booking.appointment_time)}</td></tr>
+        </table>
+        <p style="margin:24px 0 0;font-size:13px;color:#888">To cancel please call us at your earliest convenience.<br>893 Lafayette Road, Hampton, New Hampshire</p>
+      </div>
+    </div>`;
+  if (emailCfg.enabled && transporter) {
+    await transporter.sendMail({ from: emailCfg.from, to: booking.customer_email, subject, html });
+    console.log(`[email] Sent ${hoursAhead}h reminder to ${booking.customer_email}`);
+  } else {
+    console.log(`[email] (dev) Would send ${hoursAhead}h reminder to ${booking.customer_email}`);
+  }
+  if (booking.customer_phone) {
+    const smsBody = `Gents Barber Shop: Reminder! Your ${booking.service_name} appointment is in ${hoursAhead} hour${hoursAhead>1?'s':''} at ${fmtTimeFn(booking.appointment_time)}. 893 Lafayette Rd, Hampton NH.`;
+    if (emailCfg.sms?.enabled && smsClient) {
+      await smsClient.messages.create({ body: smsBody, from: emailCfg.sms.fromNumber, to: booking.customer_phone });
+      console.log(`[sms] Sent ${hoursAhead}h reminder to ${booking.customer_phone}`);
+    } else {
+      console.log(`[sms] (dev) Would send ${hoursAhead}h reminder SMS to ${booking.customer_phone}`);
+    }
+  }
+}
+
+async function sendNoShowMessage(booking) {
+  const first   = booking.customer_name.split(' ')[0];
+  const subject = `We missed you at Gents Barber Shop`;
+  const html = `
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
+      <div style="background:#222;padding:24px;text-align:center;border-radius:8px 8px 0 0">
+        <h1 style="color:#fff;margin:0;font-size:22px">✂ Gents Barber Shop</h1>
+        <p style="color:#aaa;margin:6px 0 0;font-size:13px">893 Lafayette Road, Hampton, NH</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e4e4;border-top:none;padding:28px;border-radius:0 0 8px 8px">
+        <h2 style="margin:0 0 6px;color:#1a1a1a">We missed you, ${first}!</h2>
+        <p style="color:#666;margin:0 0 16px;font-size:14px">It looks like you weren't able to make your appointment on ${fmtDateFn(booking.appointment_date)} at ${fmtTimeFn(booking.appointment_time)}.</p>
+        <p style="color:#666;margin:0 0 24px;font-size:14px">No worries — we'd love to get you back in the chair soon. Give us a call or book online to reschedule anytime.</p>
+        <p style="margin:24px 0 0;font-size:13px;color:#888">893 Lafayette Road, Hampton, New Hampshire</p>
+      </div>
+    </div>`;
+  if (emailCfg.enabled && transporter) {
+    await transporter.sendMail({ from: emailCfg.from, to: booking.customer_email, subject, html });
+    console.log(`[email] Sent no-show message to ${booking.customer_email}`);
+  } else {
+    console.log(`[email] (dev) Would send no-show message to ${booking.customer_email}`);
+  }
+  if (booking.customer_phone) {
+    const smsBody = `Hi ${first}, we missed you at Gents Barber Shop today! No worries — call us or visit our website to rebook. We'd love to see you soon!`;
+    if (emailCfg.sms?.enabled && smsClient) {
+      await smsClient.messages.create({ body: smsBody, from: emailCfg.sms.fromNumber, to: booking.customer_phone });
+      console.log(`[sms] Sent no-show SMS to ${booking.customer_phone}`);
+    } else {
+      console.log(`[sms] (dev) Would send no-show SMS to ${booking.customer_phone}`);
+    }
+  }
+}
+
+// ── Reminder scheduler ─────────────────────────────────────────────────────
+function checkAndSendReminders() {
+  const now = new Date();
+  const targets = [{ hours: 24, label: '24h' }, { hours: 2, label: '2h' }];
+  for (const { hours, label } of targets) {
+    // Window: appointment falls within ±8 minutes of exactly N hours from now
+    const windowStart = new Date(now.getTime() + (hours * 60 - 8) * 60000);
+    const windowEnd   = new Date(now.getTime() + (hours * 60 + 8) * 60000);
+    const pad2        = n => String(n).padStart(2,'0');
+    const toDateStr   = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    const toTimeStr   = d => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    const upcoming = db.prepare(`
+      SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min
+      FROM bookings b
+      LEFT JOIN stylists s  ON b.stylist_id=s.id
+      LEFT JOIN services svc ON b.service_id=svc.id
+      WHERE b.status IN ('pending','confirmed')
+        AND ((b.appointment_date > ? OR (b.appointment_date=? AND b.appointment_time>=?))
+        AND  (b.appointment_date < ? OR (b.appointment_date=? AND b.appointment_time<=?)))
+    `).all(toDateStr(windowStart), toDateStr(windowStart), toTimeStr(windowStart),
+           toDateStr(windowEnd),   toDateStr(windowEnd),   toTimeStr(windowEnd));
+    for (const booking of upcoming) {
+      const already = db.prepare('SELECT id FROM reminders_sent WHERE booking_id=? AND reminder_type=?').get(booking.id, label);
+      if (already) continue;
+      sendReminderMessage(booking, hours).then(() => {
+        db.prepare('INSERT INTO reminders_sent (booking_id, reminder_type) VALUES (?,?)').run(booking.id, label);
+      }).catch(e => console.error(`[reminder error] booking ${booking.id}:`, e.message));
+    }
+  }
+}
+
 // ── Multer (photo uploads) ─────────────────────────────────────────────────
 const uploadsDir = process.env.RAILWAY_ENVIRONMENT
   ? '/data/uploads'
@@ -288,6 +416,15 @@ app.get('/api/availability', (req,res) => {
     ? db.prepare("SELECT appointment_time FROM bookings WHERE stylist_id=? AND appointment_date=? AND status!='cancelled'").all(stylist_id,date)
     : db.prepare("SELECT appointment_time FROM bookings WHERE appointment_date=? AND status!='cancelled'").all(date);
   const taken = new Set(booked.map(r=>r.appointment_time));
+  // Also exclude slots covered by barber's blocked times
+  if (stylist_id) {
+    const blocks = db.prepare('SELECT block_start,block_end FROM blocked_times WHERE stylist_id=? AND block_date=?').all(stylist_id, date);
+    for (const slot of ALL_SLOTS) {
+      for (const blk of blocks) {
+        if (slot >= blk.block_start && slot < blk.block_end) { taken.add(slot); break; }
+      }
+    }
+  }
   res.json({ slots: ALL_SLOTS.filter(s=>!taken.has(s)) });
 });
 
@@ -303,6 +440,10 @@ app.post('/api/bookings', async (req,res) => {
   // Validate stylist exists (if provided)
   if (stylist_id && !db.prepare('SELECT id FROM stylists WHERE id=? AND active=1').get(stylist_id))
     return res.status(400).json({error:'Invalid or inactive barber'});
+
+  // Check if customer is blocked from online booking
+  const custRec = db.prepare('SELECT blocked FROM customers WHERE email=?').get(customer_email);
+  if (custRec?.blocked) return res.status(403).json({error:'Online booking is not available for this account. Please call us directly.'});
 
   const conflict = db.prepare(
     "SELECT id FROM bookings WHERE stylist_id IS ? AND appointment_date=? AND appointment_time=? AND status!='cancelled'"
@@ -401,24 +542,33 @@ app.get('/api/admin/bookings', requireAuth, (req,res) => {
   res.json(db.prepare(q).all(...p));
 });
 
-app.patch('/api/admin/bookings/:id', requireAdmin, (req,res) => {
+app.patch('/api/admin/bookings/:id', requireAdmin, async (req,res) => {
   const b = db.prepare('SELECT * FROM bookings WHERE id=?').get(req.params.id);
   if (!b) return res.status(404).json({error:'Booking not found'});
-  const { status, notes, stylist_id } = req.body;
-  // Prevent assigning a barber to a slot they're already booked in
+  const { status, notes, stylist_id, appointment_date, appointment_time } = req.body;
+  const newDate = appointment_date !== undefined ? appointment_date : b.appointment_date;
+  const newTime = appointment_time !== undefined ? appointment_time : b.appointment_time;
+  // Prevent conflict when reassigning barber or time
   if (stylist_id !== undefined && stylist_id) {
     const conflict = db.prepare(
       "SELECT id FROM bookings WHERE stylist_id=? AND appointment_date=? AND appointment_time=? AND status!='cancelled' AND id!=?"
-    ).get(stylist_id, b.appointment_date, b.appointment_time, b.id);
+    ).get(stylist_id||b.stylist_id, newDate, newTime, b.id);
     if (conflict) return res.status(409).json({error:'That barber is already booked at this time'});
   }
   const updates=[]; const p=[];
-  if (status!==undefined)     { updates.push('status=?');     p.push(status); }
-  if (notes!==undefined)      { updates.push('notes=?');      p.push(notes); }
-  if (stylist_id!==undefined) { updates.push('stylist_id=?'); p.push(stylist_id||null); }
+  if (status!==undefined)           { updates.push('status=?');           p.push(status); }
+  if (notes!==undefined)            { updates.push('notes=?');            p.push(notes); }
+  if (stylist_id!==undefined)       { updates.push('stylist_id=?');       p.push(stylist_id||null); }
+  if (appointment_date!==undefined) { updates.push('appointment_date=?'); p.push(appointment_date); }
+  if (appointment_time!==undefined) { updates.push('appointment_time=?'); p.push(appointment_time); }
   if (!updates.length) return res.status(400).json({error:'Nothing to update'});
   p.push(req.params.id);
   db.prepare(`UPDATE bookings SET ${updates.join(',')} WHERE id=?`).run(...p);
+  // Send no-show message if status changed to no_show
+  if (status === 'no_show' && b.status !== 'no_show') {
+    const full = db.prepare(`SELECT b.*, s.name as stylist_name, svc.name as service_name FROM bookings b LEFT JOIN stylists s ON b.stylist_id=s.id LEFT JOIN services svc ON b.service_id=svc.id WHERE b.id=?`).get(req.params.id);
+    sendNoShowMessage(full).catch(e => console.error('[no-show email error]', e.message));
+  }
   res.json(db.prepare('SELECT * FROM bookings WHERE id=?').get(req.params.id));
 });
 
@@ -502,13 +652,17 @@ app.get('/api/admin/customers/:email', requireAuth, (req,res) => {
 });
 
 app.patch('/api/admin/customers/:email', requireAuth, (req,res) => {
-  const { notes, name, phone } = req.body;
+  const { notes, name, phone, preferences, tags, blocked, marketing_opt_in } = req.body;
   const c = db.prepare('SELECT * FROM customers WHERE email=?').get(req.params.email);
   if (!c) return res.status(404).json({error:'Customer not found'});
   const updates=[]; const p=[];
-  if (notes!==undefined) { updates.push('notes=?'); p.push(notes); }
-  if (name!==undefined)  { updates.push('name=?');  p.push(name.trim()); }
-  if (phone!==undefined) { updates.push('phone=?'); p.push(phone.trim()); }
+  if (notes!==undefined)          { updates.push('notes=?');           p.push(notes); }
+  if (name!==undefined)           { updates.push('name=?');            p.push(name.trim()); }
+  if (phone!==undefined)          { updates.push('phone=?');           p.push(phone.trim()); }
+  if (preferences!==undefined)    { updates.push('preferences=?');     p.push(preferences); }
+  if (tags!==undefined)           { updates.push('tags=?');            p.push(tags); }
+  if (blocked!==undefined)        { updates.push('blocked=?');         p.push(blocked?1:0); }
+  if (marketing_opt_in!==undefined){ updates.push('marketing_opt_in=?'); p.push(marketing_opt_in?1:0); }
   if (!updates.length) return res.status(400).json({error:'Nothing to update'});
   p.push(req.params.email);
   db.prepare(`UPDATE customers SET ${updates.join(',')} WHERE email=?`).run(...p);
@@ -530,6 +684,114 @@ app.post('/api/admin/customers/merge', requireAdmin, (req,res) => {
   // Mark dropped record as merged (not deleted) so future bookings with old email resolve to canonical
   db.prepare('UPDATE customers SET merged_into=? WHERE email=?').run(keep_email, drop_email);
   res.json(db.prepare('SELECT * FROM customers WHERE email=?').get(keep_email));
+});
+
+// ── Barber: Blocked times (self-service) ───────────────────────────────────
+app.get('/api/barber/blocked-times', requireAuth, (req,res) => {
+  const { date } = req.query;
+  let sql = 'SELECT * FROM blocked_times WHERE stylist_id=?';
+  const p = [req.session.barberId];
+  if (date) { sql += ' AND block_date=?'; p.push(date); }
+  sql += ' ORDER BY block_date ASC, block_start ASC';
+  res.json(db.prepare(sql).all(...p));
+});
+
+app.post('/api/barber/blocked-times', requireAuth, (req,res) => {
+  const { block_date, block_start, block_end, reason } = req.body;
+  if (!block_date||!block_start||!block_end) return res.status(400).json({error:'block_date, block_start, block_end required'});
+  if (block_start >= block_end) return res.status(400).json({error:'block_start must be before block_end'});
+  const r = db.prepare('INSERT INTO blocked_times (stylist_id,block_date,block_start,block_end,reason) VALUES (?,?,?,?,?)')
+    .run(req.session.barberId, block_date, block_start, block_end, reason||'');
+  res.status(201).json(db.prepare('SELECT * FROM blocked_times WHERE id=?').get(r.lastInsertRowid));
+});
+
+app.delete('/api/barber/blocked-times/:id', requireAuth, (req,res) => {
+  const bt = db.prepare('SELECT * FROM blocked_times WHERE id=?').get(req.params.id);
+  if (!bt) return res.status(404).json({error:'Not found'});
+  if (bt.stylist_id !== req.session.barberId && req.session.role !== 'admin')
+    return res.status(403).json({error:'Forbidden'});
+  db.prepare('DELETE FROM blocked_times WHERE id=?').run(req.params.id);
+  res.json({ok:true});
+});
+
+// Admin: view all blocked times
+app.get('/api/admin/blocked-times', requireAdmin, (req,res) => {
+  const { stylist_id, date } = req.query;
+  let sql = 'SELECT bt.*, s.name as barber_name FROM blocked_times bt JOIN stylists s ON bt.stylist_id=s.id WHERE 1=1';
+  const p = [];
+  if (stylist_id) { sql += ' AND bt.stylist_id=?'; p.push(stylist_id); }
+  if (date)       { sql += ' AND bt.block_date=?';  p.push(date); }
+  sql += ' ORDER BY bt.block_date ASC, bt.block_start ASC';
+  res.json(db.prepare(sql).all(...p));
+});
+
+// Admin: delete any blocked time
+app.delete('/api/admin/blocked-times/:id', requireAdmin, (req,res) => {
+  const bt = db.prepare('SELECT * FROM blocked_times WHERE id=?').get(req.params.id);
+  if (!bt) return res.status(404).json({error:'Not found'});
+  db.prepare('DELETE FROM blocked_times WHERE id=?').run(req.params.id);
+  res.json({ok:true});
+});
+
+// Admin: Schedule view
+app.get('/api/admin/schedule', requireAuth, (req,res) => {
+  const { date } = req.query;
+  if (!date) return res.status(400).json({error:'date required'});
+  const barbers  = db.prepare("SELECT id,name,photo_url FROM stylists WHERE active=1 AND role IN ('barber','stylist') ORDER BY name").all();
+  const bookings = db.prepare(`
+    SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min
+    FROM bookings b
+    LEFT JOIN stylists s   ON b.stylist_id=s.id
+    LEFT JOIN services svc ON b.service_id=svc.id
+    WHERE b.appointment_date=? AND b.status!='cancelled'
+    ORDER BY b.appointment_time ASC`).all(date);
+  const blocks = db.prepare('SELECT bt.*, s.name as barber_name FROM blocked_times bt JOIN stylists s ON bt.stylist_id=s.id WHERE bt.block_date=?').all(date);
+  res.json({ barbers, bookings, blocks, date });
+});
+
+// Admin: customer opt-in broadcast
+app.post('/api/admin/customers/broadcast', requireAdmin, async (req,res) => {
+  const { message, subject, opt_in_only } = req.body;
+  if (!message) return res.status(400).json({error:'message required'});
+  let sql = 'SELECT * FROM customers WHERE merged_into IS NULL AND email IS NOT NULL AND email != \'\'';
+  if (opt_in_only) sql += ' AND marketing_opt_in=1';
+  const targets = db.prepare(sql).all();
+  let sent = 0, errors = 0;
+  for (const c of targets) {
+    try {
+      if (c.email && emailCfg.enabled && transporter) {
+        await transporter.sendMail({
+          from: emailCfg.from,
+          to:   c.email,
+          subject: subject || 'Message from Gents Barber Shop',
+          html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#fff;border-radius:8px">${message.replace(/\n/g,'<br>')}<p style="margin-top:24px;font-size:12px;color:#aaa">Gents Barber Shop · 893 Lafayette Road, Hampton, NH</p></div>`
+        });
+      }
+      if (c.phone && emailCfg.sms?.enabled && smsClient) {
+        await smsClient.messages.create({ body: message, from: emailCfg.sms.fromNumber, to: c.phone });
+      }
+      sent++;
+    } catch(e) { errors++; console.error('[broadcast error]', e.message); }
+  }
+  res.json({ sent, errors, total: targets.length });
+});
+
+// ── Admin: Send reminder manually ──────────────────────────────────────────
+app.post('/api/admin/bookings/:id/remind', requireAdmin, async (req,res) => {
+  const booking = db.prepare(`
+    SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min
+    FROM bookings b
+    LEFT JOIN stylists s   ON b.stylist_id=s.id
+    LEFT JOIN services svc ON b.service_id=svc.id
+    WHERE b.id=?`).get(req.params.id);
+  if (!booking) return res.status(404).json({error:'Booking not found'});
+  await sendReminderMessage(booking, 24).catch(e => { throw e; });
+  res.json({ok:true});
+});
+
+// ── Cron: reminder scheduler ────────────────────────────────────────────────
+cron.schedule('*/15 * * * *', () => {
+  checkAndSendReminders();
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
