@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Your Booking — Gents Barber Shop</title>
+  <style>
+    :root {
+      --accent: #8B1A1A;
+      --accent-light: #f9f0f0;
+      --gold: #c9a95a;
+      --text: #1a1a1a;
+      --muted: #666;
+      --border: #e4e4e4;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: var(--text); min-height: 100vh; }
+
+    /* Nav */
+    nav { background: #1a1a1a; padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo img { height: 36px; width: 36px; border-radius: 50%; object-fit: cover; }
+    .nav-logo span { color: #fff; font-size: 17px; font-weight: 700; letter-spacing: .5px; }
+    .nav-back { color: #aaa; text-decoration: none; font-size: 13px; }
+    .nav-back:hover { color: #fff; }
+
+    /* Hero */
+    .hero { background: linear-gradient(135deg, #1a1a1a 0%, #2d1111 100%); padding: 40px 24px 36px; text-align: center; border-bottom: 3px solid var(--gold); }
+    .hero h1 { color: #fff; font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+    .hero p { color: #aaa; font-size: 14px; }
+
+    /* Card */
+    .container { max-width: 520px; margin: 32px auto; padding: 0 16px 48px; }
+    .card { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,.07); }
+    .card-header { background: var(--accent); color: #fff; padding: 18px 24px; }
+    .card-header h2 { font-size: 17px; font-weight: 700; }
+    .card-header p { font-size: 12px; opacity: .8; margin-top: 4px; }
+    .card-body { padding: 24px; }
+
+    /* Detail table */
+    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: var(--muted); font-weight: 500; }
+    .detail-value { font-weight: 600; text-align: right; }
+
+    /* Status badge */
+    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .status-pending   { background: #fef3c7; color: #92400e; }
+    .status-confirmed { background: #d1fae5; color: #065f46; }
+    .status-cancelled { background: #fee2e2; color: #991b1b; }
+    .status-completed { background: #e0e7ff; color: #3730a3; }
+    .status-no_show   { background: #fce7f3; color: #9d174d; }
+
+    /* Buttons */
+    .btn-cancel { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 20px; transition: background .15s; }
+    .btn-cancel:hover { background: #6b1212; }
+    .btn-cancel:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* States */
+    .state { text-align: center; padding: 36px 24px; }
+    .state-icon { font-size: 48px; margin-bottom: 16px; }
+    .state h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .state p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .state-success h2 { color: #065f46; }
+    .state-error h2 { color: var(--accent); }
+
+    /* Alert */
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-top: 16px; display: none; }
+    .alert.show { display: block; }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+
+    /* Notice box */
+    .notice { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; margin-top: 20px; line-height: 1.5; }
+
+    .contact-link { display: block; text-align: center; margin-top: 24px; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; }
+    .contact-link:hover { text-decoration: underline; }
+
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid #e4e4e4; border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">
+    <img src="/images/logo.png" alt="Gents" onerror="this.style.display='none'">
+    <span>Gents Barbershop</span>
+  </a>
+  <a class="nav-back" href="/booking">Book Another Appointment &rarr;</a>
+</nav>
+
+<div class="hero">
+  <h1>Manage Your Booking</h1>
+  <p>View details or cancel your upcoming appointment</p>
+</div>
+
+<div class="container">
+  <div class="card" id="card-loading">
+    <div class="state">
+      <div class="spinner"></div>
+      <p style="color:#888">Loading your booking details…</p>
+    </div>
+  </div>
+
+  <div class="card" id="card-detail" style="display:none">
+    <div class="card-header">
+      <h2>Appointment Details</h2>
+      <p id="booking-ref"></p>
+    </div>
+    <div class="card-body">
+      <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" id="d-status"></span></div>
+      <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value" id="d-service"></span></div>
+      <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value" id="d-barber"></span></div>
+      <div class="detail-row"><span class="detail-label">Date</span><span class="detail-value" id="d-date"></span></div>
+      <div class="detail-row"><span class="detail-label">Time</span><span class="detail-value" id="d-time"></span></div>
+      <div class="detail-row"><span class="detail-label">Price</span><span class="detail-value" id="d-price"></span></div>
+
+      <div class="alert alert-error" id="cancel-err"></div>
+
+      <div id="cancel-section">
+        <div class="notice">
+          <strong>Need to cancel?</strong> You can cancel online up to 2 hours before your appointment.
+          Cancellations within 2 hours require a phone call.
+        </div>
+        <button class="btn-cancel" id="btn-cancel" onclick="confirmCancel()">Cancel My Appointment</button>
+      </div>
+
+      <a class="contact-link" href="tel:6036018615">Questions? Call us: 603-601-8615</a>
+    </div>
+  </div>
+
+  <div class="card" id="card-success" style="display:none">
+    <div class="state state-success">
+      <div class="state-icon">✅</div>
+      <h2>Appointment Cancelled</h2>
+      <p>Your appointment has been cancelled. We hope to see you again soon!</p>
+      <a href="/booking" style="display:inline-block;margin-top:20px;padding:12px 28px;background:#8B1A1A;color:#fff;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">
+        Book Again
+      </a>
+    </div>
+  </div>
+
+  <div class="card" id="card-notfound" style="display:none">
+    <div class="state state-error">
+      <div class="state-icon">🔍</div>
+      <h2>Booking Not Found</h2>
+      <p>This link may have expired or already been used.<br>Please call us if you need help.</p>
+      <a href="tel:6036018615" style="display:inline-block;margin-top:20px;padding:12px 28px;background:#8B1A1A;color:#fff;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">
+        Call 603-601-8615
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const token = window.location.pathname.split('/').pop();
+
+  const fmtTime = t => {
+    const [h, m] = t.split(':').map(Number);
+    return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  };
+  const fmtDate = d => {
+    const [y, mo, day] = d.split('-').map(Number);
+    return new Date(y, mo - 1, day).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  };
+  const statusLabel = s => ({
+    pending:'Pending Confirmation', confirmed:'Confirmed', cancelled:'Cancelled',
+    completed:'Completed', no_show:'No Show'
+  }[s] || s);
+  const statusClass = s => `status-badge status-${s}`;
+
+  function show(id) {
+    ['card-loading','card-detail','card-success','card-notfound'].forEach(c => {
+      document.getElementById(c).style.display = c === id ? '' : 'none';
+    });
+  }
+
+  let booking = null;
+
+  async function loadBooking() {
+    try {
+      const res = await fetch(`/api/booking/${token}`);
+      if (!res.ok) { show('card-notfound'); return; }
+      booking = await res.json();
+
+      document.getElementById('booking-ref').textContent = `Booking #${booking.id} · ${booking.customer_name}`;
+      document.getElementById('d-status').innerHTML = `<span class="${statusClass(booking.status)}">${statusLabel(booking.status)}</span>`;
+      document.getElementById('d-service').textContent = booking.service_name;
+      document.getElementById('d-barber').textContent = booking.stylist_name || 'Any Available';
+      document.getElementById('d-date').textContent = fmtDate(booking.appointment_date);
+      document.getElementById('d-time').textContent = fmtTime(booking.appointment_time);
+      document.getElementById('d-price').textContent = `$${(booking.price_cents / 100).toFixed(0)}`;
+
+      // Show/hide cancel section based on status
+      const canCancel = ['pending','confirmed'].includes(booking.status);
+      document.getElementById('cancel-section').style.display = canCancel ? '' : 'none';
+      if (!canCancel) {
+        const msg = document.createElement('div');
+        msg.className = 'notice';
+        msg.style.background = '#f0f0f0';
+        msg.style.borderColor = '#ccc';
+        msg.style.color = '#666';
+        msg.textContent = booking.status === 'cancelled'
+          ? 'This appointment has already been cancelled.'
+          : 'This appointment cannot be modified online.';
+        document.querySelector('.card-body').appendChild(msg);
+      }
+
+      show('card-detail');
+    } catch(e) {
+      show('card-notfound');
+    }
+  }
+
+  async function confirmCancel() {
+    const confirmed = window.confirm(
+      `Are you sure you want to cancel your ${booking.service_name} appointment on ${fmtDate(booking.appointment_date)} at ${fmtTime(booking.appointment_time)}?`
+    );
+    if (!confirmed) return;
+
+    const btn = document.getElementById('btn-cancel');
+    const errEl = document.getElementById('cancel-err');
+    btn.disabled = true;
+    btn.textContent = 'Cancelling…';
+    errEl.classList.remove('show');
+
+    try {
+      const res = await fetch(`/api/booking/${token}/cancel`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        errEl.textContent = data.error || 'Unable to cancel. Please call us.';
+        errEl.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Cancel My Appointment';
+        return;
+      }
+      show('card-success');
+    } catch(e) {
+      errEl.textContent = 'Network error. Please try again or call us at 603-601-8615.';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.textContent = 'Cancel My Appointment';
+    }
+  }
+
+  loadBooking();
+</script>
+</body>
+</html>

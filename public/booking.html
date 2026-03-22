@@ -444,6 +444,9 @@
           <label for="date-picker">Date</label>
           <input type="date" id="date-picker" class="date-input" onchange="loadSlots()">
         </div>
+        <div style="padding:0 22px 4px;font-size:12px;color:#888;line-height:1.6" id="hours-hint">
+          Hours: Mon–Tue &amp; Fri 10AM–6PM &nbsp;·&nbsp; Thu 10AM–5PM &nbsp;·&nbsp; Sat–Sun 9AM–3PM &nbsp;·&nbsp; <strong>Wed Closed</strong>
+        </div>
         <div class="slots-section">
           <div class="slots-label">Available Times</div>
           <div class="slots-grid" id="slots-grid">
@@ -639,8 +642,17 @@ async function loadSlots() {
   document.getElementById('btn-3-next').disabled = true;
   const barberId = state.selectedBarber?.id;
   const url = `/api/availability?date=${date}${barberId ? `&stylist_id=${barberId}` : ''}`;
-  const { slots } = await fetch(url).then(r => r.json());
+  const data = await fetch(url).then(r => r.json());
   const grid = document.getElementById('slots-grid');
+  if (data.closed) {
+    grid.innerHTML = `<div class="no-slots">We're closed on this day. Please choose another date.</div>`;
+    return;
+  }
+  // Filter slots to business hours for this day
+  let slots = data.slots || [];
+  if (data.hours) {
+    slots = slots.filter(s => s >= data.hours.open && s < data.hours.close);
+  }
   if (!slots.length) {
     grid.innerHTML = `<div class="no-slots">No available times on this date. Please choose another day.</div>`;
     return;

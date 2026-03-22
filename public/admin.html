@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — Gents Barber Shop</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{--accent:#8B1A1A;--accent-lt:#f9f0f0;--dark:#1a1a1a;--sw:220px;--border:#e4e4e4;--bg:#f5f5f0;--radius:12px}
@@ -235,9 +236,12 @@
     <a class="nav-link" id="nav-customers" onclick="showView('customers','Customers',this)">👤 Customers</a>
     <a class="nav-link" id="nav-broadcast" style="display:none" onclick="openBroadcastModal()">📣 Send Broadcast</a>
     <a class="nav-link" id="nav-services" style="display:none" onclick="showView('services','Services &amp; Pricing',this)">💈 Services &amp; Pricing</a>
+    <div class="nav-section" id="nav-analytics-section" style="display:none">Insights</div>
+    <a class="nav-link" id="nav-analytics" style="display:none" onclick="showView('analytics','Analytics',this)">📊 Analytics</a>
     <div class="nav-section">My Schedule</div>
     <a class="nav-link" id="nav-blocked" onclick="showView('blocked','Block Off Time',this)">🚫 Block Off Time</a>
     <div class="nav-section">Quick Links</div>
+    <a class="nav-link" href="/barber-day" target="_blank">📱 Day View</a>
     <a class="nav-link" href="/booking" target="_blank">+ New Booking</a>
   </div>
   <div class="sb-footer">
@@ -298,10 +302,15 @@
 
     <!-- Customers view -->
     <div class="view" id="view-customers">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
         <input type="text" id="cust-search" placeholder="Search by name or email…"
-          style="flex:1;padding:9px 14px;border:1px solid #ddd;border-radius:6px;font-size:14px"
+          style="flex:1;min-width:180px;padding:9px 14px;border:1px solid #ddd;border-radius:6px;font-size:14px"
           oninput="loadCustomers()">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="cust-filter-row">
+        <button class="filter-btn active" id="cf-all"    onclick="setCustFilter('')">All</button>
+        <button class="filter-btn"        id="cf-lapsed" onclick="setCustFilter('lapsed')">⚠ Lapsed (30+ days)</button>
+        <button class="filter-btn"        id="cf-new"    onclick="setCustFilter('new')">✨ New (no visits)</button>
       </div>
       <div id="cust-table-wrap" style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -344,6 +353,47 @@
         <thead><tr><th>#</th><th>Service Name</th><th>Duration</th><th>Price</th><th>Description</th><th>Status</th><th></th></tr></thead>
         <tbody id="svc-tbody"><tr><td colspan="7" style="padding:24px;text-align:center;color:#888">Loading…</td></tr></tbody>
       </table>
+    </div>
+
+    <!-- Analytics view (admin only) -->
+    <div class="view" id="view-analytics">
+      <p style="font-size:13px;color:#888;margin-bottom:20px">Revenue trend: last 14 days &nbsp;·&nbsp; Service &amp; peak hours: all-time &nbsp;·&nbsp; Performance: current month</p>
+      <!-- Revenue trend -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:20px">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#1a1a1a">📈 Revenue — Last 14 Days</div>
+        <canvas id="chart-revenue" height="80"></canvas>
+      </div>
+      <!-- Two column: services + peak hours -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:22px">
+          <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#1a1a1a">💈 Service Popularity</div>
+          <canvas id="chart-services" height="220"></canvas>
+        </div>
+        <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:22px">
+          <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#1a1a1a">⏰ Peak Hours</div>
+          <canvas id="chart-hours" height="220"></canvas>
+        </div>
+      </div>
+      <!-- Barber performance -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:22px">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#1a1a1a">✂ Barber Performance — This Month</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border)">
+                <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:700">Barber</th>
+                <th style="padding:10px 14px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:700">Appointments</th>
+                <th style="padding:10px 14px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:700">Revenue</th>
+                <th style="padding:10px 14px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:700">Completion %</th>
+                <th style="padding:10px 14px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:700">No-Show %</th>
+              </tr>
+            </thead>
+            <tbody id="perf-tbody">
+              <tr><td colspan="5" style="padding:24px;text-align:center;color:#888">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Schedule view (admin only) -->
@@ -771,6 +821,8 @@ async function init() {
     document.getElementById('nav-schedule').style.display = '';
     document.getElementById('nav-broadcast').style.display = '';
     document.getElementById('nav-services').style.display = '';
+    document.getElementById('nav-analytics').style.display = '';
+    document.getElementById('nav-analytics-section').style.display = '';
     document.getElementById('btn-walkin').style.display = '';
     document.getElementById('btn-export').style.display = '';
     document.getElementById('rev-row').style.display = '';
@@ -826,9 +878,10 @@ function showView(view, title, el) {
   } else {
     dateEl.value = '';
   }
-  if (view === 'team')     { loadTeam(); return; }
-  if (view === 'customers'){ loadCustomers(); return; }
-  if (view === 'services') { loadServices(); return; }
+  if (view === 'team')      { loadTeam(); return; }
+  if (view === 'customers') { loadCustomers(); return; }
+  if (view === 'services')  { loadServices(); return; }
+  if (view === 'analytics') { loadAnalytics(); return; }
   if (view === 'schedule') {
     if (!document.getElementById('sched-date').value) document.getElementById('sched-date').value = localDateStr();
     loadSchedule(); return;
@@ -1116,26 +1169,60 @@ init();
 
 // ── Customers ──────────────────────────────────────────────
 let custDrawerEmail = null;
+let custFilter = '';
+let _lastCustData = [];
+
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const then = new Date(y, m - 1, d);
+  const now  = new Date(); now.setHours(0,0,0,0);
+  return Math.floor((now - then) / 86400000);
+}
+
+function setCustFilter(f) {
+  custFilter = f;
+  document.getElementById('cf-all').classList.toggle('active', f === '');
+  document.getElementById('cf-lapsed').classList.toggle('active', f === 'lapsed');
+  document.getElementById('cf-new').classList.toggle('active', f === 'new');
+  renderCustTable(_lastCustData);
+}
+
+function renderCustTable(custs) {
+  let filtered = custs;
+  if (custFilter === 'lapsed') {
+    filtered = custs.filter(c => { const ds = daysSince(c.last_visit); return ds !== null && ds >= 30; });
+  } else if (custFilter === 'new') {
+    filtered = custs.filter(c => !c.last_visit || c.booking_count === 0);
+  }
+  const tbody = document.getElementById('cust-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:24px;color:#888;text-align:center">${custFilter ? 'No customers match this filter' : 'No customers found'}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(c => {
+    const ds = daysSince(c.last_visit);
+    const lapsedBadge = ds !== null && ds >= 30
+      ? `<span style="display:inline-block;margin-left:6px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#fef3c7;color:#92400e">${ds}d ago</span>` : '';
+    const spentStr = c.total_spent ? `<span style="font-size:11px;color:#059669;font-weight:700">$${(c.total_spent/100).toFixed(0)}</span>` : '';
+    return `<tr style="border-bottom:1px solid #eee">
+      <td style="padding:10px 12px">${esc(c.name)||'<em style="color:#aaa">—</em>'}</td>
+      <td style="padding:10px 12px;color:#555">${esc(c.email)}</td>
+      <td style="padding:10px 12px;color:#555">${esc(c.phone)||'—'}</td>
+      <td style="padding:10px 12px;text-align:center;font-weight:600">${c.booking_count||0} ${spentStr}</td>
+      <td style="padding:10px 12px;color:#555">${c.last_visit ? fmtDate(c.last_visit) : '—'}${lapsedBadge}</td>
+      <td style="padding:10px 12px;color:#777;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.notes)||''}</td>
+      <td style="padding:10px 12px"><button onclick="openCustDrawer('${esc(c.email)}')" style="padding:5px 12px;background:#6b1212;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer">View</button></td>
+    </tr>`;
+  }).join('');
+}
 
 async function loadCustomers() {
   const q = document.getElementById('cust-search').value.trim();
   const url = '/api/admin/customers' + (q ? `?q=${encodeURIComponent(q)}` : '');
   const custs = await fetch(url).then(r=>r.json());
-  const tbody = document.getElementById('cust-tbody');
-  if (!custs.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="padding:24px;color:#888;text-align:center">No customers found</td></tr>';
-    return;
-  }
-  tbody.innerHTML = custs.map(c => `
-    <tr style="border-bottom:1px solid #eee">
-      <td style="padding:10px 12px">${esc(c.name)||'<em style="color:#aaa">—</em>'}</td>
-      <td style="padding:10px 12px;color:#555">${esc(c.email)}</td>
-      <td style="padding:10px 12px;color:#555">${esc(c.phone)||'—'}</td>
-      <td style="padding:10px 12px;text-align:center;font-weight:600">${c.booking_count||0}</td>
-      <td style="padding:10px 12px;color:#555">${c.last_visit ? fmtDate(c.last_visit) : '—'}</td>
-      <td style="padding:10px 12px;color:#777;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.notes)||''}</td>
-      <td style="padding:10px 12px"><button onclick="openCustDrawer('${esc(c.email)}')" style="padding:5px 12px;background:#6b1212;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer">View</button></td>
-    </tr>`).join('');
+  _lastCustData = custs;
+  renderCustTable(custs);
 }
 
 async function openCustDrawer(email) {
@@ -1588,6 +1675,84 @@ async function toggleService(id, active) {
   await fetch(`/api/admin/services/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active})});
   showSvcOk(active?'Service activated.':'Service deactivated.');
   loadServices();
+}
+
+// ── Analytics ──────────────────────────────────────────────
+let _chartRevenue = null, _chartServices = null, _chartHours = null;
+
+async function loadAnalytics() {
+  const data = await fetch('/api/admin/analytics').then(r => r.json()).catch(() => null);
+  if (!data) return;
+
+  // Revenue trend chart
+  const revCtx = document.getElementById('chart-revenue').getContext('2d');
+  if (_chartRevenue) _chartRevenue.destroy();
+  _chartRevenue = new Chart(revCtx, {
+    type: 'line',
+    data: {
+      labels: data.revenueTrend.map(d => {
+        const [y,m,day] = d.date.split('-').map(Number);
+        return new Date(y,m-1,day).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      }),
+      datasets: [{
+        label: 'Revenue',
+        data: data.revenueTrend.map(d => (d.revenue / 100).toFixed(2)),
+        borderColor: '#8B1A1A', backgroundColor: 'rgba(139,26,26,.08)',
+        tension: 0.3, fill: true, pointRadius: 4, pointBackgroundColor: '#8B1A1A'
+      }]
+    },
+    options: {
+      responsive: true, plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `$${parseFloat(ctx.raw).toFixed(2)}` } }
+      },
+      scales: { y: { ticks: { callback: v => `$${v}` }, beginAtZero: true } }
+    }
+  });
+
+  // Service popularity doughnut
+  const svcCtx = document.getElementById('chart-services').getContext('2d');
+  if (_chartServices) _chartServices.destroy();
+  const COLORS = ['#8B1A1A','#c9a95a','#4f46e5','#059669','#d97706','#dc2626','#7c3aed','#0284c7'];
+  _chartServices = new Chart(svcCtx, {
+    type: 'doughnut',
+    data: {
+      labels: data.servicePopularity.map(s => s.name),
+      datasets: [{ data: data.servicePopularity.map(s => s.count), backgroundColor: COLORS }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+  });
+
+  // Peak hours bar
+  const hrCtx = document.getElementById('chart-hours').getContext('2d');
+  if (_chartHours) _chartHours.destroy();
+  _chartHours = new Chart(hrCtx, {
+    type: 'bar',
+    data: {
+      labels: data.peakHours.map(h => {
+        const hr = parseInt(h.hour); return `${hr % 12 || 12}${hr >= 12 ? 'pm' : 'am'}`;
+      }),
+      datasets: [{ label: 'Appointments', data: data.peakHours.map(h => h.count),
+        backgroundColor: '#c9a95a', borderRadius: 4 }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+
+  // Barber performance table
+  const tbody = document.getElementById('perf-tbody');
+  if (!data.barberPerf.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;color:#888">No data yet</td></tr>';
+  } else {
+    tbody.innerHTML = data.barberPerf.map(b => `
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:10px 14px;font-weight:600">${esc(b.name)}</td>
+        <td style="padding:10px 14px;text-align:right">${b.appts_month}</td>
+        <td style="padding:10px 14px;text-align:right;font-weight:700;color:#059669">$${(b.revenue_month/100).toFixed(0)}</td>
+        <td style="padding:10px 14px;text-align:right">${b.appts_month ? Math.round((b.completed/b.appts_month)*100) : 0}%</td>
+        <td style="padding:10px 14px;text-align:right;color:${b.appts_month && b.no_shows/b.appts_month > .1 ? '#dc2626' : '#555'}">${b.appts_month ? Math.round((b.no_shows/b.appts_month)*100) : 0}%</td>
+      </tr>`).join('');
+  }
 }
 
 // ── Walk-in booking ────────────────────────────────────────

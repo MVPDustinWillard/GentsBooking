@@ -8,7 +8,10 @@ const twilio     = require('twilio');
 const path       = require('path');
 const fs         = require('fs');
 const cron       = require('node-cron');
+const crypto     = require('crypto');
 const emailCfg   = require('./email.config');
+
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 // ── Twilio SMS client ──────────────────────────────────────────────────────
 const smsClient = emailCfg.sms?.enabled
@@ -81,6 +84,11 @@ try { db.exec("ALTER TABLE customers ADD COLUMN marketing_opt_in INTEGER DEFAULT
 try { db.exec("ALTER TABLE customers ADD COLUMN preferences TEXT DEFAULT ''"); } catch(_) {}
 try { db.exec("ALTER TABLE customers ADD COLUMN tags TEXT DEFAULT ''"); } catch(_) {}
 try { db.exec("ALTER TABLE bookings ADD COLUMN no_show_msg_sent INTEGER DEFAULT 0"); } catch(_) {}
+try { db.exec("ALTER TABLE bookings ADD COLUMN cancel_token TEXT DEFAULT NULL"); } catch(_) {}
+try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_cancel_token ON bookings(cancel_token) WHERE cancel_token IS NOT NULL"); } catch(_) {}
+// Backfill cancel tokens for existing bookings that don't have one
+db.prepare("SELECT id FROM bookings WHERE cancel_token IS NULL AND status IN ('pending','confirmed')").all()
+  .forEach(b => { try { db.prepare('UPDATE bookings SET cancel_token=? WHERE id=?').run(crypto.randomUUID(), b.id); } catch(_) {} });
 
 // Reminders tracking table
 db.exec(`CREATE TABLE IF NOT EXISTS reminders_sent (
@@ -200,7 +208,15 @@ async function sendBookingConfirmation(booking) {
           <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Time</td><td style="padding:8px 0">${fmtTimeFn(booking.appointment_time)}</td></tr>
           <tr style="border-top:1px solid #f0f0f0"><td style="padding:8px 0;color:#888">Price</td><td style="padding:8px 0;font-weight:700">${price}</td></tr>
         </table>
-        <p style="margin:24px 0 0;font-size:13px;color:#888">To reschedule or cancel, please call us directly.<br>893 Lafayette Road, Hampton, New Hampshire</p>
+        ${booking.cancel_token ? `
+        <div style="margin:24px 0 0;padding:16px;background:#f9f4f4;border:1px solid #e4c4c4;border-radius:8px;text-align:center">
+          <p style="font-size:13px;color:#666;margin:0 0 10px">Need to cancel? You can do so online (2-hour notice required).</p>
+          <a href="${BASE_URL}/manage-booking/${booking.cancel_token}"
+             style="display:inline-block;padding:10px 24px;background:#8B1A1A;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">
+            Manage My Booking
+          </a>
+        </div>` : ''}
+        <p style="margin:16px 0 0;font-size:12px;color:#aaa;text-align:center">893 Lafayette Road, Hampton, New Hampshire · 603-601-8615</p>
       </div>
     </div>`;
 
@@ -378,10 +394,21 @@ for (let h = 9; h < 17; h++) {
   ALL_SLOTS.push(`${String(h).padStart(2,'0')}:30`);
 }
 
+// ── Business Hours (0=Sun … 6=Sat) ─────────────────────────────────────────
+const BUSINESS_HOURS = {
+  0: { open: '09:00', close: '15:00', label: 'Sun 9 AM – 3 PM' },
+  1: { open: '10:00', close: '18:00', label: 'Mon 10 AM – 6 PM' },
+  2: { open: '10:00', close: '18:00', label: 'Tue 10 AM – 6 PM' },
+  3: null,                                                           // Wed CLOSED
+  4: { open: '10:00', close: '17:00', label: 'Thu 10 AM – 5 PM' },
+  5: { open: '10:00', close: '18:00', label: 'Fri 10 AM – 6 PM' },
+  6: { open: '09:00', close: '15:00', label: 'Sat 9 AM – 3 PM' },
+};
+
 // ── Page routes (before static so they take priority over index.html) ──────
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 app.get('/booking', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'booking.html')));
-
+app.get('/manage-booking/:token', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'manage-booking.html')));
 // ── Middleware ─────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -402,6 +429,8 @@ const requireAdmin = (req,res,next) => {
   if (req.session.role !== 'admin') return res.status(403).json({error:'Admins only'});
   next();
 };
+
+app.get('/barber-day', requireAuth, (_req, res) => res.sendFile(path.join(__dirname, 'public', 'barber-day.html')));
 
 // ── Public API ─────────────────────────────────────────────────────────────
 app.get('/api/services', (_req,res) => res.json(db.prepare('SELECT * FROM services WHERE active=1').all()));
@@ -425,7 +454,41 @@ app.get('/api/availability', (req,res) => {
       }
     }
   }
-  res.json({ slots: ALL_SLOTS.filter(s=>!taken.has(s)) });
+  const [yr, mo, dy] = date.split('-').map(Number);
+  const dow = new Date(yr, mo - 1, dy).getDay();
+  const bh  = BUSINESS_HOURS[dow];
+  // Always return non-booked slots from ALL_SLOTS; front-end uses closed/hours for UX
+  res.json({ slots: ALL_SLOTS.filter(s => !taken.has(s)), closed: !bh, hours: bh || null });
+});
+
+// Business hours
+app.get('/api/business-hours', (_req, res) => res.json(BUSINESS_HOURS));
+
+// ── Public: Manage booking by cancel token ──────────────────────────────────
+app.get('/api/booking/:token', (req, res) => {
+  const b = db.prepare(`
+    SELECT b.id, b.customer_name, b.customer_email, b.customer_phone,
+      b.appointment_date, b.appointment_time, b.status, b.notes,
+      s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min
+    FROM bookings b
+    LEFT JOIN stylists s ON b.stylist_id=s.id
+    LEFT JOIN services svc ON b.service_id=svc.id
+    WHERE b.cancel_token=?`).get(req.params.token);
+  if (!b) return res.status(404).json({error:'Booking not found'});
+  res.json(b);
+});
+
+app.post('/api/booking/:token/cancel', (req, res) => {
+  const b = db.prepare('SELECT * FROM bookings WHERE cancel_token=?').get(req.params.token);
+  if (!b) return res.status(404).json({error:'Booking not found'});
+  if (!['pending','confirmed'].includes(b.status))
+    return res.status(400).json({error:`This booking cannot be cancelled online (status: ${b.status}).`});
+  const [yr, mo, dy] = b.appointment_date.split('-').map(Number);
+  const apptMs = new Date(yr, mo - 1, dy, ...b.appointment_time.split(':').map(Number)).getTime();
+  if (apptMs - Date.now() < 2 * 60 * 60 * 1000)
+    return res.status(400).json({error:'Cancellations require at least 2 hours notice. Please call us at 603-601-8615.'});
+  db.prepare("UPDATE bookings SET status='cancelled', cancel_token=NULL WHERE cancel_token=?").run(req.params.token);
+  res.json({ok:true, message:'Your appointment has been cancelled.'});
 });
 
 // Walk-in availability: only checks null-stylist conflicts (for admin walk-in modal)
@@ -459,9 +522,10 @@ app.post('/api/bookings', async (req,res) => {
   ).get(stylist_id||null, appointment_date, appointment_time);
   if (conflict) return res.status(409).json({error:'That time slot is no longer available. Please choose another.'});
 
+  const cancelToken = crypto.randomUUID();
   const r = db.prepare(
-    'INSERT INTO bookings (customer_name,customer_email,customer_phone,stylist_id,service_id,appointment_date,appointment_time,notes) VALUES (?,?,?,?,?,?,?,?)'
-  ).run(customer_name, customer_email, customer_phone||'', stylist_id||null, service_id, appointment_date, appointment_time, notes||'');
+    'INSERT INTO bookings (customer_name,customer_email,customer_phone,stylist_id,service_id,appointment_date,appointment_time,notes,cancel_token) VALUES (?,?,?,?,?,?,?,?,?)'
+  ).run(customer_name, customer_email, customer_phone||'', stylist_id||null, service_id, appointment_date, appointment_time, notes||'', cancelToken);
 
   const booking = db.prepare(`
     SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min
@@ -637,8 +701,13 @@ app.patch('/api/admin/barbers/:id', requireAdmin, (req,res) => {
 // ── Admin: Customers ───────────────────────────────────────────────────────
 app.get('/api/admin/customers', requireAuth, (req,res) => {
   const { q } = req.query;
-  let sql = `SELECT c.*, COUNT(b.id) as booking_count, MAX(b.appointment_date) as last_visit
-    FROM customers c LEFT JOIN bookings b ON b.customer_email=c.email
+  let sql = `SELECT c.*,
+    COUNT(b.id) as booking_count,
+    MAX(b.appointment_date) as last_visit,
+    COALESCE(SUM(CASE WHEN b.status IN ('completed','confirmed','no_show') THEN svc.price_cents ELSE 0 END),0) as total_spent
+    FROM customers c
+    LEFT JOIN bookings b ON b.customer_email=c.email
+    LEFT JOIN services svc ON b.service_id=svc.id
     WHERE c.merged_into IS NULL`;
   const params = [];
   if (q) { sql += ` AND (c.email LIKE ? OR c.name LIKE ?)`; params.push(`%${q}%`, `%${q}%`); }
@@ -719,6 +788,52 @@ app.get('/api/admin/revenue', requireAuth, (req, res) => {
   });
 });
 
+// ── Admin: Analytics ───────────────────────────────────────────────────────
+app.get('/api/admin/analytics', requireAdmin, (req, res) => {
+  const pad2 = n => String(n).padStart(2,'0');
+  const now  = new Date();
+  const monthStart = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-01`;
+
+  const revenueTrend = db.prepare(`
+    SELECT b.appointment_date as date,
+      COALESCE(SUM(svc.price_cents),0) as revenue,
+      COUNT(*) as count
+    FROM bookings b JOIN services svc ON b.service_id=svc.id
+    WHERE b.status IN ('confirmed','completed','no_show')
+      AND b.appointment_date >= date('now','-13 days')
+      AND b.appointment_date <= date('now')
+    GROUP BY b.appointment_date ORDER BY b.appointment_date ASC`).all();
+
+  const servicePopularity = db.prepare(`
+    SELECT svc.name, COUNT(*) as count, COALESCE(SUM(svc.price_cents),0) as revenue
+    FROM bookings b JOIN services svc ON b.service_id=svc.id
+    WHERE b.status IN ('confirmed','completed','no_show')
+    GROUP BY b.service_id ORDER BY count DESC`).all();
+
+  const peakHours = db.prepare(`
+    SELECT SUBSTR(appointment_time,1,2) as hour, COUNT(*) as count
+    FROM bookings WHERE status IN ('confirmed','completed','no_show')
+    GROUP BY hour ORDER BY hour ASC`).all();
+
+  const barberPerf = db.prepare(`
+    SELECT s.id, s.name,
+      COUNT(*) as appts_month,
+      COALESCE(SUM(svc.price_cents),0) as revenue_month,
+      SUM(CASE WHEN b.status='completed' THEN 1 ELSE 0 END) as completed,
+      SUM(CASE WHEN b.status='no_show'   THEN 1 ELSE 0 END) as no_shows,
+      SUM(CASE WHEN b.status='cancelled' THEN 1 ELSE 0 END) as cancelled
+    FROM bookings b
+    JOIN stylists s ON b.stylist_id=s.id
+    JOIN services svc ON b.service_id=svc.id
+    WHERE b.appointment_date >= ? AND s.role IN ('barber','stylist')
+    GROUP BY s.id ORDER BY revenue_month DESC`).all(monthStart);
+
+  const statusBreakdown = db.prepare(`
+    SELECT status, COUNT(*) as count FROM bookings GROUP BY status ORDER BY count DESC`).all();
+
+  res.json({ revenueTrend, servicePopularity, peakHours, barberPerf, statusBreakdown });
+});
+
 // ── Admin: Services management ─────────────────────────────────────────────
 app.get('/api/admin/services', requireAdmin, (_req, res) =>
   res.json(db.prepare('SELECT * FROM services ORDER BY active DESC, id ASC').all()));
@@ -759,8 +874,9 @@ app.post('/api/admin/bookings/create', requireAuth, async (req, res) => {
   const conflict = db.prepare("SELECT id FROM bookings WHERE stylist_id IS ? AND appointment_date=? AND appointment_time=? AND status!='cancelled'")
     .get(stylist_id||null, appointment_date, appointment_time);
   if (conflict) return res.status(409).json({error:'That time slot is already booked'});
-  const r = db.prepare('INSERT INTO bookings (customer_name,customer_email,customer_phone,stylist_id,service_id,appointment_date,appointment_time,notes,status) VALUES (?,?,?,?,?,?,?,?,?)')
-    .run(customer_name, customer_email, customer_phone||'', stylist_id||null, service_id, appointment_date, appointment_time, notes||'', 'confirmed');
+  const cancelToken = crypto.randomUUID();
+  const r = db.prepare('INSERT INTO bookings (customer_name,customer_email,customer_phone,stylist_id,service_id,appointment_date,appointment_time,notes,status,cancel_token) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .run(customer_name, customer_email, customer_phone||'', stylist_id||null, service_id, appointment_date, appointment_time, notes||'', 'confirmed', cancelToken);
   db.prepare(`INSERT INTO customers (email,name,phone) VALUES (?,?,?) ON CONFLICT(email) DO UPDATE SET name=CASE WHEN excluded.name!='' THEN excluded.name ELSE name END, phone=CASE WHEN excluded.phone!='' THEN excluded.phone ELSE phone END`)
     .run(customer_email, customer_name, customer_phone||'');
   const booking = db.prepare(`SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min FROM bookings b LEFT JOIN stylists s ON b.stylist_id=s.id LEFT JOIN services svc ON b.service_id=svc.id WHERE b.id=?`).get(r.lastInsertRowid);

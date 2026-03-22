@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Day View — Gents Barber Shop</title>
+  <style>
+    :root {
+      --accent: #8B1A1A;
+      --gold: #c9a95a;
+      --border: #e4e4e4;
+      --radius: 12px;
+      --text: #1a1a1a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0f0; color: var(--text); }
+
+    /* Header */
+    header { background: #1a1a1a; color: #fff; padding: 16px 16px 12px; position: sticky; top: 0; z-index: 100; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .header-title { font-size: 18px; font-weight: 800; }
+    .header-user { font-size: 12px; color: #aaa; }
+    .logout-btn { background: none; border: none; color: #888; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
+    .logout-btn:hover { color: #fff; background: rgba(255,255,255,.1); }
+
+    /* Controls */
+    .controls { display: flex; gap: 8px; align-items: center; }
+    .date-nav { display: flex; align-items: center; gap: 6px; flex: 1; }
+    .date-nav button { background: rgba(255,255,255,.15); border: none; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 16px; cursor: pointer; }
+    .date-nav button:hover { background: rgba(255,255,255,.25); }
+    #day-picker { flex: 1; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); color: #fff; padding: 7px 10px; border-radius: 6px; font-size: 13px; font-family: inherit; }
+    #day-picker::-webkit-calendar-picker-indicator { filter: invert(1); }
+    .today-btn { background: var(--gold); border: none; color: #1a1a1a; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+    /* Barber filter (admin only) */
+    #barber-filter-wrap { padding: 12px 16px; background: #222; display: none; border-top: 1px solid #333; }
+    #barber-filter-wrap select { width: 100%; background: #333; border: 1px solid #444; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; }
+
+    /* Stats bar */
+    .stats-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 24px; overflow-x: auto; }
+    .stat { text-align: center; flex-shrink: 0; }
+    .stat-val { font-size: 22px; font-weight: 800; color: var(--accent); }
+    .stat-lbl { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+
+    /* Cards */
+    .cards { padding: 12px 12px 80px; }
+    .time-group { margin-bottom: 20px; }
+    .time-group-label { font-size: 11px; font-weight: 800; color: #888; text-transform: uppercase; letter-spacing: 1px; padding: 0 4px 8px; }
+
+    .appt-card { background: #fff; border-radius: 10px; border-left: 5px solid #ccc; box-shadow: 0 1px 6px rgba(0,0,0,.06); margin-bottom: 8px; overflow: hidden; }
+    .appt-card.status-confirmed  { border-left-color: #059669; }
+    .appt-card.status-pending    { border-left-color: #d97706; }
+    .appt-card.status-completed  { border-left-color: #4f46e5; opacity: .75; }
+    .appt-card.status-no_show   { border-left-color: #dc2626; opacity: .7; }
+    .appt-card.status-cancelled  { border-left-color: #ccc; opacity: .5; }
+
+    .appt-main { padding: 14px 14px 10px; }
+    .appt-row1 { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+    .appt-time { font-size: 15px; font-weight: 800; color: var(--accent); }
+    .appt-status { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 3px 8px; border-radius: 20px; }
+    .badge-confirmed { background: #d1fae5; color: #065f46; }
+    .badge-pending   { background: #fef3c7; color: #92400e; }
+    .badge-completed { background: #e0e7ff; color: #3730a3; }
+    .badge-no_show   { background: #fee2e2; color: #991b1b; }
+    .badge-cancelled { background: #f3f4f6; color: #6b7280; }
+
+    .appt-name { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+    .appt-service { font-size: 13px; color: #666; margin-bottom: 6px; }
+    .appt-meta { display: flex; gap: 12px; font-size: 12px; color: #888; align-items: center; flex-wrap: wrap; }
+    .appt-phone { color: var(--accent); font-weight: 600; text-decoration: none; }
+    .appt-phone:hover { text-decoration: underline; }
+    .appt-price { font-weight: 700; color: #059669; margin-left: auto; }
+
+    /* Notes */
+    .appt-notes { margin: 6px 14px 0; padding: 8px 10px; background: #fffbeb; border-radius: 6px; font-size: 12px; color: #92400e; border-left: 3px solid #fcd34d; display: none; }
+    .appt-notes.has-notes { display: block; }
+
+    /* Actions */
+    .appt-actions { border-top: 1px solid #f0f0f0; padding: 8px 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .action-btn { flex: 1; min-width: 0; padding: 8px 6px; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; transition: opacity .15s; }
+    .action-btn:hover { opacity: .85; }
+    .action-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-confirm  { background: #059669; color: #fff; }
+    .btn-complete { background: #4f46e5; color: #fff; }
+    .btn-noshow   { background: #dc2626; color: #fff; }
+    .btn-cancel   { background: #6b7280; color: #fff; }
+    .btn-undo     { background: #e5e7eb; color: #374151; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 24px; }
+    .empty-icon { font-size: 56px; margin-bottom: 16px; }
+    .empty-title { font-size: 20px; font-weight: 700; color: #444; margin-bottom: 8px; }
+    .empty-sub { color: #888; font-size: 14px; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 48px 24px; color: #888; }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid #e4e4e4; border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,.3); display: none; z-index: 999; white-space: nowrap; }
+    .toast.show { display: block; animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="header-title">✂ Day View</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="header-user" id="header-user"></span>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="date-nav">
+      <button onclick="changeDay(-1)">‹</button>
+      <input type="date" id="day-picker" onchange="loadDay()">
+      <button onclick="changeDay(1)">›</button>
+    </div>
+    <button class="today-btn" onclick="goToday()">Today</button>
+  </div>
+</header>
+
+<div id="barber-filter-wrap">
+  <select id="barber-filter" onchange="loadDay()">
+    <option value="">All Barbers</option>
+  </select>
+</div>
+
+<div class="stats-bar" id="stats-bar" style="display:none">
+  <div class="stat"><div class="stat-val" id="stat-total">0</div><div class="stat-lbl">Scheduled</div></div>
+  <div class="stat"><div class="stat-val" id="stat-confirmed">0</div><div class="stat-lbl">Confirmed</div></div>
+  <div class="stat"><div class="stat-val" id="stat-completed">0</div><div class="stat-lbl">Completed</div></div>
+  <div class="stat"><div class="stat-val" id="stat-revenue">$0</div><div class="stat-lbl">Revenue</div></div>
+</div>
+
+<div class="cards" id="cards-container">
+  <div class="loading"><div class="spinner"></div><br>Loading…</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let me = null;
+  let allBarbers = [];
+
+  const pad2 = n => String(n).padStart(2,'0');
+  const localDate = () => {
+    const n = new Date();
+    return `${n.getFullYear()}-${pad2(n.getMonth()+1)}-${pad2(n.getDate())}`;
+  };
+  const fmtTime = t => {
+    const [h, m] = t.split(':').map(Number);
+    return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  };
+  const fmtDate = d => {
+    const [y, mo, day] = d.split('-').map(Number);
+    return new Date(y, mo-1, day).toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+  };
+  const fmt$ = cents => `$${(cents/100).toFixed(0)}`;
+  const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  function showToast(msg, duration = 2500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  function changeDay(delta) {
+    const picker = document.getElementById('day-picker');
+    const [y, m, d] = picker.value.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + delta);
+    picker.value = `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}-${pad2(dt.getDate())}`;
+    loadDay();
+  }
+
+  function goToday() {
+    document.getElementById('day-picker').value = localDate();
+    loadDay();
+  }
+
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  }
+
+  async function init() {
+    const r = await fetch('/api/auth/me');
+    if (!r.ok) { window.location.href = '/login.html'; return; }
+    me = await r.json();
+    document.getElementById('header-user').textContent = me.name;
+    document.getElementById('day-picker').value = localDate();
+
+    if (me.role === 'admin') {
+      const barbers = await fetch('/api/admin/barbers').then(r => r.json());
+      allBarbers = barbers;
+      const sel = document.getElementById('barber-filter');
+      barbers.filter(b => b.active !== 0).forEach(b => {
+        const o = document.createElement('option');
+        o.value = b.id; o.textContent = b.name; sel.appendChild(o);
+      });
+      document.getElementById('barber-filter-wrap').style.display = '';
+    }
+
+    loadDay();
+  }
+
+  async function loadDay() {
+    const date = document.getElementById('day-picker').value;
+    if (!date) return;
+    const barberId = document.getElementById('barber-filter')?.value;
+    document.getElementById('cards-container').innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+    document.getElementById('stats-bar').style.display = 'none';
+
+    let url = `/api/admin/bookings?date=${date}`;
+    if (barberId) url += `&stylist_id=${barberId}`;
+    else if (me.role !== 'admin') url += `&stylist_id=${me.id}`;
+
+    const bookings = await fetch(url).then(r => r.json()).catch(() => []);
+    renderDay(date, bookings);
+  }
+
+  function renderDay(date, bookings) {
+    const active = bookings.filter(b => b.status !== 'cancelled');
+    const completed = active.filter(b => b.status === 'completed').length;
+    const confirmed = active.filter(b => b.status === 'confirmed').length;
+    const revenue = active.filter(b => ['completed','confirmed','no_show'].includes(b.status))
+      .reduce((s, b) => s + (b.price_cents || 0), 0);
+
+    if (active.length > 0) {
+      document.getElementById('stat-total').textContent = active.length;
+      document.getElementById('stat-confirmed').textContent = confirmed;
+      document.getElementById('stat-completed').textContent = completed;
+      document.getElementById('stat-revenue').textContent = fmt$(revenue);
+      document.getElementById('stats-bar').style.display = '';
+    }
+
+    const container = document.getElementById('cards-container');
+    if (!active.length) {
+      const dateLabel = date === localDate() ? 'Today' : fmtDate(date);
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-title">No appointments ${dateLabel}</div><div class="empty-sub">A free day!</div></div>`;
+      return;
+    }
+
+    // Group by hour
+    const grouped = {};
+    active.sort((a, b) => a.appointment_time.localeCompare(b.appointment_time))
+      .forEach(b => {
+        const hour = b.appointment_time.substring(0, 2);
+        if (!grouped[hour]) grouped[hour] = [];
+        grouped[hour].push(b);
+      });
+
+    container.innerHTML = Object.entries(grouped).map(([hour, appts]) => {
+      const h = parseInt(hour);
+      const label = `${h % 12 || 12}:00 ${h >= 12 ? 'PM' : 'AM'}`;
+      return `<div class="time-group">
+        <div class="time-group-label">${label}</div>
+        ${appts.map(a => renderCard(a)).join('')}
+      </div>`;
+    }).join('');
+
+    // Attach event listeners
+    container.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const action = btn.dataset.action;
+        updateStatus(id, action, btn);
+      });
+    });
+  }
+
+  function renderCard(a) {
+    const badgeClass = `badge-${a.status}`;
+    const statusLabel = { confirmed:'Confirmed', pending:'Pending', completed:'Completed', no_show:'No Show', cancelled:'Cancelled' }[a.status] || a.status;
+    const isAdmin = me.role === 'admin';
+    const canAct = isAdmin && !['completed','cancelled'].includes(a.status);
+
+    let actions = '';
+    if (isAdmin) {
+      if (a.status === 'pending') {
+        actions = `<button class="action-btn btn-confirm" data-action="confirmed" data-id="${a.id}">Confirm</button>`;
+      }
+      if (['pending','confirmed'].includes(a.status)) {
+        actions += `<button class="action-btn btn-complete" data-action="completed" data-id="${a.id}">Complete</button>
+                    <button class="action-btn btn-noshow" data-action="no_show" data-id="${a.id}">No Show</button>
+                    <button class="action-btn btn-cancel" data-action="cancelled" data-id="${a.id}">Cancel</button>`;
+      }
+      if (['no_show','completed'].includes(a.status)) {
+        actions += `<button class="action-btn btn-undo" data-action="confirmed" data-id="${a.id}">Undo → Confirmed</button>`;
+      }
+    }
+
+    const phoneHtml = a.customer_phone
+      ? `<a class="appt-phone" href="tel:${a.customer_phone}">${a.customer_phone}</a>`
+      : '<span>No phone</span>';
+    const barberHtml = (me.role === 'admin' && !document.getElementById('barber-filter')?.value)
+      ? `<span>· ${esc(a.stylist_name || 'Unassigned')}</span>` : '';
+
+    return `<div class="appt-card status-${a.status}" id="card-${a.id}">
+      <div class="appt-main">
+        <div class="appt-row1">
+          <span class="appt-time">${fmtTime(a.appointment_time)}</span>
+          <span class="appt-status ${badgeClass}">${statusLabel}</span>
+        </div>
+        <div class="appt-name">${esc(a.customer_name)}</div>
+        <div class="appt-service">${esc(a.service_name || '—')}</div>
+        <div class="appt-meta">
+          ${phoneHtml}
+          ${barberHtml}
+          <span class="appt-price">${a.price_cents ? fmt$(a.price_cents) : ''}</span>
+        </div>
+      </div>
+      ${a.notes ? `<div class="appt-notes has-notes">📝 ${esc(a.notes)}</div>` : ''}
+      ${actions ? `<div class="appt-actions">${actions}</div>` : ''}
+    </div>`;
+  }
+
+  async function updateStatus(id, status, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      const res = await fetch(`/api/admin/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) { showToast('Update failed'); if (btn) { btn.disabled = false; btn.textContent = '?'; } return; }
+      const updated = await res.json();
+      showToast(`Booking marked as ${status.replace('_',' ')}`);
+      loadDay(); // Reload to refresh all cards
+    } catch(e) {
+      showToast('Network error');
+      if (btn) { btn.disabled = false; }
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
