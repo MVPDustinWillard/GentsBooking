@@ -61,6 +61,7 @@
       background: url('/images/gents/thumb-1.jpg') center center / cover no-repeat;
       filter: brightness(.45);
     }
+    #hero-bg { background-image: url('/images/gents/thumb-1.jpg'); }
     .hero::before {
       content: '';
       position: absolute; left: 0; top: 0; bottom: 0; width: 6px; z-index: 1;
@@ -275,11 +276,11 @@
 
 <!-- ── HERO ── -->
 <div class="hero">
-  <div class="hero-bg"></div>
+  <div class="hero-bg" id="hero-bg"></div>
   <div class="hero-content">
-    <img class="hero-banner-img" src="/images/gents/hero.jpg" alt="Gents Barbershop logo">
-    <h1 class="hero-title">Welcome to <span>Gents</span> Barbershop</h1>
-    <p class="hero-sub">
+    <img class="hero-banner-img" id="hero-banner-img" src="/images/gents/hero.jpg" alt="Gents Barbershop logo">
+    <h1 class="hero-title" id="hero-title">Welcome to <span>Gents</span> Barbershop</h1>
+    <p class="hero-sub" id="hero-subtitle">
       Experience the timeless traditional values of an old-time barber shop with specific enhancements
       targeted to meet the needs of today's gentleman — in a friendly establishment for men and boys
       that consistently offers the very best in services, products and camaraderie at an affordable price.
@@ -388,16 +389,16 @@
   </div>
   <div class="gallery-strip">
     <a href="/booking" title="Book a haircut">
-      <img src="/images/gents/staff-4.jpg" alt="Happy young client after fresh haircut">
+      <img id="gallery-1" src="/images/gents/staff-4.jpg" alt="Happy young client after fresh haircut">
     </a>
     <a href="/booking" title="Book a styling service">
-      <img src="/images/gents/thumb-3.jpg" alt="The Gents team" style="object-position: center top">
+      <img id="gallery-2" src="/images/gents/thumb-3.jpg" alt="The Gents team" style="object-position: center top">
     </a>
     <a href="/booking" title="Book an appointment">
-      <img src="/images/gents/staff-2.jpg" alt="Client showing off great beard trim result">
+      <img id="gallery-3" src="/images/gents/staff-2.jpg" alt="Client showing off great beard trim result">
     </a>
     <a href="/booking" title="Fun for all ages">
-      <img src="/images/gents/thumb-4.jpg" alt="Young clients enjoying the barbershop" style="object-position: center center">
+      <img id="gallery-4" src="/images/gents/thumb-4.jpg" alt="Young clients enjoying the barbershop" style="object-position: center center">
     </a>
   </div>
 </section>
@@ -411,19 +412,19 @@
     <div class="hours-layout">
       <div>
         <div class="hours-grid">
-          <div class="hours-day">Monday</div>    <div class="hours-time">10am – 6pm</div>
-          <div class="hours-day">Tuesday</div>   <div class="hours-time">10am – 6pm</div>
-          <div class="hours-day">Wednesday</div> <div class="hours-time hours-closed">Closed</div>
-          <div class="hours-day">Thursday</div>  <div class="hours-time">10am – 5pm</div>
-          <div class="hours-day">Friday</div>    <div class="hours-time">10am – 6pm</div>
-          <div class="hours-day">Saturday</div>  <div class="hours-time">9am – 3pm</div>
-          <div class="hours-day">Sunday</div>    <div class="hours-time">9am – 3pm</div>
+          <div class="hours-day">Monday</div>    <div class="hours-time" id="hours-mon">10am – 6pm</div>
+          <div class="hours-day">Tuesday</div>   <div class="hours-time" id="hours-tue">10am – 6pm</div>
+          <div class="hours-day">Wednesday</div> <div class="hours-time hours-closed" id="hours-wed">Closed</div>
+          <div class="hours-day">Thursday</div>  <div class="hours-time" id="hours-thu">10am – 5pm</div>
+          <div class="hours-day">Friday</div>    <div class="hours-time" id="hours-fri">10am – 6pm</div>
+          <div class="hours-day">Saturday</div>  <div class="hours-time" id="hours-sat">9am – 3pm</div>
+          <div class="hours-day">Sunday</div>    <div class="hours-time" id="hours-sun">9am – 3pm</div>
         </div>
         <div class="policy-box">
-          <strong>Cancellation Policy:</strong> We understand that life can sometimes be unpredictable!
+          <strong>Cancellation Policy:</strong> <span id="cancel-policy">We understand that life can sometimes be unpredictable!
           Please allow a minimum of <strong>2 hours</strong> for any cancellations to avoid a <strong>No Show Fee</strong>
           (this fee will be applied to your next visit). You can cancel anytime by calling us or by email.
-          We thank you for your understanding. <em>— The Gents Team</em>
+          We thank you for your understanding. <em>— The Gents Team</em></span>
         </div>
       </div>
       <div>
@@ -524,21 +525,21 @@
           <span class="contact-icon">📍</span>
           <div>
             <div class="contact-label">Address</div>
-            <div class="contact-value">893 Lafayette Road<br>Hampton, New Hampshire 03842</div>
+            <div class="contact-value" id="contact-address">893 Lafayette Road<br>Hampton, New Hampshire 03842</div>
           </div>
         </div>
         <div class="contact-item">
           <span class="contact-icon">📞</span>
           <div>
             <div class="contact-label">Phone</div>
-            <div class="contact-value"><a href="tel:6036018615">603-601-8615</a></div>
+            <div class="contact-value"><a id="contact-phone" href="tel:6036018615">603-601-8615</a></div>
           </div>
         </div>
         <div class="contact-item">
           <span class="contact-icon">✉️</span>
           <div>
             <div class="contact-label">Email</div>
-            <div class="contact-value"><a href="mailto:shellysgents@gmail.com">shellysgents@gmail.com</a></div>
+            <div class="contact-value"><a id="contact-email" href="mailto:shellysgents@gmail.com">shellysgents@gmail.com</a></div>
           </div>
         </div>
         <div class="contact-item">
@@ -546,8 +547,8 @@
           <div>
             <div class="contact-label">Instagram</div>
             <div class="contact-value">
-              <a class="instagram-link" href="https://www.instagram.com/gentsbarbershophampton" target="_blank" rel="noopener">
-                <span>📷</span> @gentsbarbershophampton
+              <a class="instagram-link" id="contact-instagram-link" href="https://www.instagram.com/gentsbarbershophampton" target="_blank" rel="noopener">
+                <span>📷</span> <span id="contact-instagram">@gentsbarbershophampton</span>
               </a>
             </div>
           </div>
@@ -593,6 +594,37 @@
 </div>
 
 <script>
+// Hydrate home page from site content API
+fetch('/api/site-content').then(r=>r.json()).then(c => {
+  if (c.hero_title) document.getElementById('hero-title').innerHTML = c.hero_title;
+  if (c.hero_subtitle) document.getElementById('hero-subtitle').textContent = c.hero_subtitle;
+  if (c.hero_bg_image) document.getElementById('hero-bg').style.backgroundImage = `url('${c.hero_bg_image}')`;
+  if (c.hero_banner_image) document.getElementById('hero-banner-img').src = c.hero_banner_image;
+  ['mon','tue','wed','thu','fri','sat','sun'].forEach(d => {
+    if (c[`hours_${d}`]) document.getElementById(`hours-${d}`).textContent = c[`hours_${d}`];
+  });
+  if (c.cancel_policy) document.getElementById('cancel-policy').textContent = c.cancel_policy;
+  [1,2,3,4].forEach(i => {
+    if (c[`gallery_${i}`]) document.getElementById(`gallery-${i}`).src = c[`gallery_${i}`];
+  });
+  if (c.contact_phone) {
+    const el = document.getElementById('contact-phone');
+    el.textContent = c.contact_phone;
+    el.href = `tel:${c.contact_phone.replace(/\D/g,'')}`;
+  }
+  if (c.contact_email) {
+    const el = document.getElementById('contact-email');
+    el.textContent = c.contact_email;
+    el.href = `mailto:${c.contact_email}`;
+  }
+  if (c.contact_address) document.getElementById('contact-address').textContent = c.contact_address;
+  if (c.contact_instagram) {
+    document.getElementById('contact-instagram').textContent = c.contact_instagram;
+    const handle = c.contact_instagram.replace(/^@/,'');
+    document.getElementById('contact-instagram-link').href = `https://www.instagram.com/${handle}`;
+  }
+}).catch(()=>{});
+
 function toggleMenu() {
   document.getElementById('nav-burger').classList.toggle('open');
   document.getElementById('nav-links').classList.toggle('open');

@@ -262,6 +262,7 @@
     <div class="nav-section">Quick Links</div>
     <a class="nav-link" href="/barber-day" target="_blank">📱 Day View</a>
     <a class="nav-link" href="/booking" target="_blank">+ New Booking</a>
+    <a class="nav-link" id="nav-site" style="display:none" onclick="showView('site','Site Content',this)">🖥 Site Content</a>
   </div>
   <div class="sb-footer">
     <a class="btn-acct" href="/account.html">🔑 Change Password</a>
@@ -457,6 +458,109 @@
       <div id="bt-list-wrap" class="bt-list">
         <div style="color:#888;font-size:14px">Loading…</div>
       </div>
+    </div>
+
+    <!-- Site Content view (admin only) -->
+    <div class="view" id="view-site">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+        <button class="filter-btn active" id="stab-hero"    onclick="siteTab('hero')">Hero</button>
+        <button class="filter-btn"        id="stab-hours"   onclick="siteTab('hours')">Hours</button>
+        <button class="filter-btn"        id="stab-gallery" onclick="siteTab('gallery')">Gallery</button>
+        <button class="filter-btn"        id="stab-contact" onclick="siteTab('contact')">Contact</button>
+      </div>
+
+      <!-- Hero tab -->
+      <div id="site-tab-hero" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:700px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">Hero Section</h3>
+        <div class="field"><label>Hero Title (HTML allowed for &lt;span&gt;)</label><input type="text" id="sc-hero_title"></div>
+        <div class="field"><label>Hero Subtitle</label><textarea id="sc-hero_subtitle" style="min-height:80px"></textarea></div>
+        <div style="margin-bottom:16px">
+          <button class="btn-add" onclick="saveSiteText(['hero_title','hero_subtitle'])">Save Text</button>
+        </div>
+        <div class="field">
+          <label>Hero Background Image</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <img id="sc-preview-hero_bg_image" src="" style="height:48px;border-radius:6px;display:none">
+            <input type="file" id="sc-file-hero_bg_image" accept="image/*" style="flex:1">
+            <button class="btn-add" onclick="uploadSiteImage('hero_bg_image',document.getElementById('sc-file-hero_bg_image'))">Upload</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Hero Banner Image (logo)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <img id="sc-preview-hero_banner_image" src="" style="height:48px;border-radius:6px;display:none">
+            <input type="file" id="sc-file-hero_banner_image" accept="image/*" style="flex:1">
+            <button class="btn-add" onclick="uploadSiteImage('hero_banner_image',document.getElementById('sc-file-hero_banner_image'))">Upload</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hours tab -->
+      <div id="site-tab-hours" style="display:none;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:700px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">Hours &amp; Policy</h3>
+        <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;margin-bottom:16px">
+          <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666">Monday</label>    <input class="filter-select" id="sc-hours_mon" placeholder="10am – 6pm">
+          <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666">Tuesday</label>   <input class="filter-select" id="sc-hours_tue" placeholder="10am – 6pm">
+          <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666">Wednesday</label> <input class="filter-select" id="sc-hours_wed" placeholder="Closed">
+          <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666">Thursday</label>  <input class="filter-select" id="sc-hours_thu" placeholder="10am – 5pm">
+          <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666">Friday</label>    <input class="filter-select" id="sc-hours_fri" placeholder="10am – 6pm">
+          <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666">Saturday</label>  <input class="filter-select" id="sc-hours_sat" placeholder="9am – 3pm">
+          <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666">Sunday</label>    <input class="filter-select" id="sc-hours_sun" placeholder="9am – 3pm">
+        </div>
+        <div class="field"><label>Cancellation Policy</label><textarea id="sc-cancel_policy" style="min-height:80px"></textarea></div>
+        <button class="btn-add" onclick="saveSiteText(['hours_mon','hours_tue','hours_wed','hours_thu','hours_fri','hours_sat','hours_sun','cancel_policy'])">Save Hours &amp; Policy</button>
+      </div>
+
+      <!-- Gallery tab -->
+      <div id="site-tab-gallery" style="display:none;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:700px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">Gallery Images</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:6px">Image 1</div>
+            <img id="sc-preview-gallery_1" src="" style="width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:none">
+            <div style="display:flex;gap:6px">
+              <input type="file" id="sc-file-gallery_1" accept="image/*" style="flex:1;font-size:12px">
+              <button class="btn-add" style="white-space:nowrap" onclick="uploadSiteImage('gallery_1',document.getElementById('sc-file-gallery_1'))">Upload</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:6px">Image 2</div>
+            <img id="sc-preview-gallery_2" src="" style="width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:none">
+            <div style="display:flex;gap:6px">
+              <input type="file" id="sc-file-gallery_2" accept="image/*" style="flex:1;font-size:12px">
+              <button class="btn-add" style="white-space:nowrap" onclick="uploadSiteImage('gallery_2',document.getElementById('sc-file-gallery_2'))">Upload</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:6px">Image 3</div>
+            <img id="sc-preview-gallery_3" src="" style="width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:none">
+            <div style="display:flex;gap:6px">
+              <input type="file" id="sc-file-gallery_3" accept="image/*" style="flex:1;font-size:12px">
+              <button class="btn-add" style="white-space:nowrap" onclick="uploadSiteImage('gallery_3',document.getElementById('sc-file-gallery_3'))">Upload</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:6px">Image 4</div>
+            <img id="sc-preview-gallery_4" src="" style="width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:none">
+            <div style="display:flex;gap:6px">
+              <input type="file" id="sc-file-gallery_4" accept="image/*" style="flex:1;font-size:12px">
+              <button class="btn-add" style="white-space:nowrap" onclick="uploadSiteImage('gallery_4',document.getElementById('sc-file-gallery_4'))">Upload</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact tab -->
+      <div id="site-tab-contact" style="display:none;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:700px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">Contact Info</h3>
+        <div class="field"><label>Phone</label><input type="text" id="sc-contact_phone" placeholder="603-601-8615"></div>
+        <div class="field"><label>Email</label><input type="text" id="sc-contact_email" placeholder="shellysgents@gmail.com"></div>
+        <div class="field"><label>Address</label><input type="text" id="sc-contact_address" placeholder="893 Lafayette Road, Hampton, New Hampshire 03842"></div>
+        <div class="field"><label>Instagram Handle</label><input type="text" id="sc-contact_instagram" placeholder="@gentsbarbershophampton"></div>
+        <button class="btn-add" onclick="saveSiteText(['contact_phone','contact_email','contact_address','contact_instagram'])">Save Contact Info</button>
+      </div>
+
+      <div id="site-save-msg" style="display:none;margin-top:14px;padding:10px 14px;background:#f0faf4;color:#1a7a4a;border:1px solid #b0d8c0;border-radius:8px;font-size:13px"></div>
     </div>
 
   </div>
@@ -845,6 +949,7 @@ async function init() {
     document.getElementById('btn-walkin').style.display = '';
     document.getElementById('btn-export').style.display = '';
     document.getElementById('rev-row').style.display = '';
+    document.getElementById('nav-site').style.display = '';
     const barbers = await fetch('/api/admin/barbers').then(r=>r.json());
     allBarbers = barbers;
     const sel = document.getElementById('f-barber');
@@ -917,6 +1022,7 @@ function showView(view, title, el) {
   if (view === 'customers') { loadCustomers(); return; }
   if (view === 'services')  { loadServices(); return; }
   if (view === 'analytics') { loadAnalytics(); return; }
+  if (view === 'site')      { loadSiteContent(); return; }
   if (view === 'schedule') {
     if (!document.getElementById('sched-date').value) document.getElementById('sched-date').value = localDateStr();
     loadSchedule(); return;
@@ -1853,6 +1959,68 @@ async function saveWalkin() {
     setTimeout(()=>{closeModal('walkin-modal');loadBookings();},1500);
   }catch(e){errEl.textContent=e.message;errEl.classList.add('show');}
   btn.disabled=false;btn.textContent='Create Booking';
+}
+
+// ── Site Content ─────────────────────────────────────────────────────────
+function siteTab(tab) {
+  ['hero','hours','gallery','contact'].forEach(t => {
+    document.getElementById(`site-tab-${t}`).style.display = t === tab ? '' : 'none';
+    document.getElementById(`stab-${t}`).classList.toggle('active', t === tab);
+  });
+}
+
+async function loadSiteContent() {
+  const c = await fetch('/api/site-content').then(r=>r.json()).catch(()=>({}));
+  const keys = ['hero_title','hero_subtitle','hours_mon','hours_tue','hours_wed','hours_thu','hours_fri','hours_sat','hours_sun','cancel_policy','contact_phone','contact_email','contact_address','contact_instagram'];
+  keys.forEach(k => {
+    const el = document.getElementById(`sc-${k}`);
+    if (el) el.value = c[k] || '';
+  });
+  ['hero_bg_image','hero_banner_image','gallery_1','gallery_2','gallery_3','gallery_4'].forEach(k => {
+    const prev = document.getElementById(`sc-preview-${k}`);
+    if (prev && c[k]) { prev.src = c[k]; prev.style.display = ''; }
+  });
+  siteTab('hero');
+}
+
+async function saveSiteText(keys) {
+  const body = {};
+  keys.forEach(k => {
+    const el = document.getElementById(`sc-${k}`);
+    if (el) body[k] = el.value;
+  });
+  const res = await fetch('/api/admin/site-content', {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const msg = document.getElementById('site-save-msg');
+  if (res.ok) {
+    msg.textContent = 'Saved! Changes will appear on the home page.';
+    msg.style.display = '';
+    setTimeout(()=>{ msg.style.display='none'; }, 3000);
+  } else {
+    msg.textContent = 'Save failed.';
+    msg.style.background='#fef0f0';msg.style.color='#c0392b';msg.style.border='1px solid #f5c6c6';
+    msg.style.display = '';
+  }
+}
+
+async function uploadSiteImage(key, input) {
+  if (!input.files || !input.files[0]) { alert('Please choose a file first.'); return; }
+  const fd = new FormData();
+  fd.append('photo', input.files[0]);
+  const res = await fetch(`/api/admin/site-content/upload/${key}`, {method:'POST',body:fd});
+  const msg = document.getElementById('site-save-msg');
+  if (res.ok) {
+    const data = await res.json();
+    const prev = document.getElementById(`sc-preview-${key}`);
+    if (prev) { prev.src = data.url; prev.style.display = ''; }
+    msg.textContent = `Image uploaded! Changes will appear on the home page.`;
+    msg.style.background='#f0faf4';msg.style.color='#1a7a4a';msg.style.border='1px solid #b0d8c0';
+    msg.style.display = '';
+    setTimeout(()=>{ msg.style.display='none'; }, 3000);
+  } else {
+    msg.textContent = 'Upload failed.';
+    msg.style.background='#fef0f0';msg.style.color='#c0392b';msg.style.border='1px solid #f5c6c6';
+    msg.style.display = '';
+  }
 }
 </script>
 </body>

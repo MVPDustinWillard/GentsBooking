@@ -118,6 +118,34 @@ db.prepare(`
   SELECT customer_email, customer_name, customer_phone FROM bookings
 `).run();
 
+// ── Site content table ─────────────────────────────────────────────────────
+db.exec(`CREATE TABLE IF NOT EXISTS site_content (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+(() => {
+  const ins = db.prepare('INSERT OR IGNORE INTO site_content (key,value) VALUES (?,?)');
+  [
+    ['hero_title',      'Welcome to <span>Gents</span> Barbershop'],
+    ['hero_subtitle',   'Experience the timeless traditional values of an old-time barber shop with specific enhancements targeted to meet the needs of today\'s gentleman — in a friendly establishment for men and boys that consistently offers the very best in services, products and camaraderie at an affordable price.'],
+    ['hero_bg_image',   '/images/gents/thumb-1.jpg'],
+    ['hero_banner_image','/images/gents/hero.jpg'],
+    ['hours_mon',       '10am – 6pm'],
+    ['hours_tue',       '10am – 6pm'],
+    ['hours_wed',       'Closed'],
+    ['hours_thu',       '10am – 5pm'],
+    ['hours_fri',       '10am – 6pm'],
+    ['hours_sat',       '9am – 3pm'],
+    ['hours_sun',       '9am – 3pm'],
+    ['cancel_policy',   'We understand that life can sometimes be unpredictable! Please allow a minimum of 2 hours for any cancellations to avoid a No Show Fee (this fee will be applied to your next visit). You can cancel anytime by calling us or by email. We thank you for your understanding. — The Gents Team'],
+    ['gallery_1',       '/images/gents/staff-4.jpg'],
+    ['gallery_2',       '/images/gents/thumb-3.jpg'],
+    ['gallery_3',       '/images/gents/staff-2.jpg'],
+    ['gallery_4',       '/images/gents/thumb-4.jpg'],
+    ['contact_phone',   '603-601-8615'],
+    ['contact_email',   'shellysgents@gmail.com'],
+    ['contact_address', '893 Lafayette Road, Hampton, New Hampshire 03842'],
+    ['contact_instagram','@gentsbarbershophampton'],
+  ].forEach(([k,v]) => ins.run(k,v));
+})();
+
 // ── Seed ───────────────────────────────────────────────────────────────────
 (() => {
   if (db.prepare('SELECT COUNT(*) as c FROM stylists').get().c === 0) {
@@ -1070,6 +1098,34 @@ app.post('/api/admin/bookings/:id/remind', requireAdmin, async (req,res) => {
 // ── Cron: reminder scheduler ────────────────────────────────────────────────
 cron.schedule('*/15 * * * *', () => {
   checkAndSendReminders();
+});
+
+// ── Site Content API ────────────────────────────────────────────────────────
+app.get('/api/site-content', (_req, res) => {
+  const rows = db.prepare('SELECT key, value FROM site_content').all();
+  const obj = {};
+  rows.forEach(r => { obj[r.key] = r.value; });
+  res.json(obj);
+});
+
+app.put('/api/admin/site-content', requireAdmin, (req, res) => {
+  const updates = req.body;
+  if (!updates || typeof updates !== 'object') return res.status(400).json({error:'JSON object required'});
+  const upd = db.prepare('INSERT OR REPLACE INTO site_content (key,value) VALUES (?,?)');
+  const tx = db.transaction((obj) => {
+    for (const [k,v] of Object.entries(obj)) {
+      if (typeof v === 'string') upd.run(k, v);
+    }
+  });
+  tx(updates);
+  res.json({ok:true});
+});
+
+app.post('/api/admin/site-content/upload/:key', requireAdmin, upload.single('photo'), (req, res) => {
+  if (!req.file) return res.status(400).json({error:'No file uploaded'});
+  const url = `/uploads/${req.file.filename}`;
+  db.prepare('INSERT OR REPLACE INTO site_content (key,value) VALUES (?,?)').run(req.params.key, url);
+  res.json({ok:true, url});
 });
 
 // ── Robots.txt ─────────────────────────────────────────────────────────────
