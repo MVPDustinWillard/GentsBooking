@@ -330,31 +330,31 @@
     <div class="services-grid">
       <div class="service-card">
         <div class="service-card-img">
-          <img src="/images/gents/staff-2.jpg" alt="Haircut result — client with styled hair and beard" style="object-position: center 10%">
-          <div class="service-card-label">Hair Cuts</div>
+          <img id="svc-card-1-img" src="/images/gents/staff-2.jpg" alt="Hair Cuts" style="object-position: center 10%">
+          <div class="service-card-label" id="svc-card-1-title">Hair Cuts</div>
         </div>
         <div class="service-card-body">
-          <div class="service-card-desc">Choose from various styles tailored for you. Classic fades, modern cuts, and everything in between — our barbers have you covered.</div>
+          <div class="service-card-desc" id="svc-card-1-desc">Choose from various styles tailored for you. Classic fades, modern cuts, and everything in between — our barbers have you covered.</div>
           <a href="/booking" class="service-card-link">Book Now →</a>
         </div>
       </div>
       <div class="service-card">
         <div class="service-card-img">
-          <img src="/images/gents/staff-3.jpg" alt="Beard trim result — client with styled silver hair" style="object-position: center 60%">
-          <div class="service-card-label">Beard Trims</div>
+          <img id="svc-card-2-img" src="/images/gents/staff-3.jpg" alt="Beard Trims" style="object-position: center 60%">
+          <div class="service-card-label" id="svc-card-2-title">Beard Trims</div>
         </div>
         <div class="service-card-body">
-          <div class="service-card-desc">Maintain your beard with precision trims and expert shaping. Keep your look sharp and well-groomed between visits.</div>
+          <div class="service-card-desc" id="svc-card-2-desc">Maintain your beard with precision trims and expert shaping. Keep your look sharp and well-groomed between visits.</div>
           <a href="/booking" class="service-card-link">Book Now →</a>
         </div>
       </div>
       <div class="service-card">
         <div class="service-card-img">
-          <img src="/images/gents/staff-5.jpg" alt="Styling service — barber working on young client" style="object-position: center 35%">
-          <div class="service-card-label">Styling Services</div>
+          <img id="svc-card-3-img" src="/images/gents/staff-5.jpg" alt="Styling Services" style="object-position: center 35%">
+          <div class="service-card-label" id="svc-card-3-title">Styling Services</div>
         </div>
         <div class="service-card-body">
-          <div class="service-card-desc">Enhance your look with professional styling and finishing. Leave the shop looking and feeling your best every time.</div>
+          <div class="service-card-desc" id="svc-card-3-desc">Enhance your look with professional styling and finishing. Leave the shop looking and feeling your best every time.</div>
           <a href="/booking" class="service-card-link">Book Now →</a>
         </div>
       </div>
@@ -627,6 +627,14 @@ fetch('/api/site-content').then(r=>r.json()).then(c => {
     el.href = `mailto:${c.contact_email}`;
   }
   if (c.contact_address) document.getElementById('contact-address').textContent = c.contact_address;
+  [1,2,3].forEach(i => {
+    if (c[`service_card_${i}_title`]) {
+      document.getElementById(`svc-card-${i}-title`).textContent = c[`service_card_${i}_title`];
+      document.getElementById(`svc-card-${i}-img`).alt = c[`service_card_${i}_title`];
+    }
+    if (c[`service_card_${i}_desc`])  document.getElementById(`svc-card-${i}-desc`).textContent  = c[`service_card_${i}_desc`];
+    if (c[`service_card_${i}_image`]) document.getElementById(`svc-card-${i}-img`).src  = c[`service_card_${i}_image`];
+  });
   if (c.contact_instagram) {
     document.getElementById('contact-instagram').textContent = c.contact_instagram;
     const handle = c.contact_instagram.replace(/^@/,'');

@@ -463,10 +463,11 @@
     <!-- Site Content view (admin only) -->
     <div class="view" id="view-site">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
-        <button class="filter-btn active" id="stab-hero"    onclick="siteTab('hero')">Hero</button>
-        <button class="filter-btn"        id="stab-hours"   onclick="siteTab('hours')">Hours</button>
-        <button class="filter-btn"        id="stab-gallery" onclick="siteTab('gallery')">Gallery</button>
-        <button class="filter-btn"        id="stab-contact" onclick="siteTab('contact')">Contact</button>
+        <button class="filter-btn active" id="stab-hero"     onclick="siteTab('hero')">Hero</button>
+        <button class="filter-btn"        id="stab-services" onclick="siteTab('services')">Services</button>
+        <button class="filter-btn"        id="stab-hours"    onclick="siteTab('hours')">Hours</button>
+        <button class="filter-btn"        id="stab-gallery"  onclick="siteTab('gallery')">Gallery</button>
+        <button class="filter-btn"        id="stab-contact"  onclick="siteTab('contact')">Contact</button>
       </div>
 
       <!-- Hero tab -->
@@ -492,6 +493,56 @@
             <img id="sc-preview-hero_banner_image" src="" style="height:48px;border-radius:6px;display:none">
             <input type="file" id="sc-file-hero_banner_image" accept="image/*" style="flex:1">
             <button class="btn-add" onclick="uploadSiteImage('hero_banner_image',document.getElementById('sc-file-hero_banner_image'))">Upload</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Services tab -->
+      <div id="site-tab-services" style="display:none;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:700px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:6px">Service Cards</h3>
+        <p style="font-size:13px;color:#888;margin-bottom:20px;line-height:1.6">Edit the three featured service cards shown on the home page. Each card has a photo, title, and description.</p>
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div style="border:1px solid var(--border);border-radius:10px;padding:18px">
+            <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:12px">Card 1</div>
+            <div class="field"><label>Title</label><input type="text" id="sc-service_card_1_title" placeholder="Hair Cuts"></div>
+            <div class="field"><label>Description</label><textarea id="sc-service_card_1_desc" style="min-height:64px"></textarea></div>
+            <div class="field">
+              <label>Photo</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <img id="sc-preview-service_card_1_image" src="" style="height:56px;width:56px;object-fit:cover;border-radius:6px;display:none">
+                <input type="file" id="sc-file-service_card_1_image" accept="image/*" style="flex:1">
+                <button class="btn-add" onclick="uploadSiteImage('service_card_1_image',document.getElementById('sc-file-service_card_1_image'))">Upload</button>
+              </div>
+            </div>
+            <button class="btn-add" onclick="saveSiteText(['service_card_1_title','service_card_1_desc'])">Save Card 1</button>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:10px;padding:18px">
+            <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:12px">Card 2</div>
+            <div class="field"><label>Title</label><input type="text" id="sc-service_card_2_title" placeholder="Beard Trims"></div>
+            <div class="field"><label>Description</label><textarea id="sc-service_card_2_desc" style="min-height:64px"></textarea></div>
+            <div class="field">
+              <label>Photo</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <img id="sc-preview-service_card_2_image" src="" style="height:56px;width:56px;object-fit:cover;border-radius:6px;display:none">
+                <input type="file" id="sc-file-service_card_2_image" accept="image/*" style="flex:1">
+                <button class="btn-add" onclick="uploadSiteImage('service_card_2_image',document.getElementById('sc-file-service_card_2_image'))">Upload</button>
+              </div>
+            </div>
+            <button class="btn-add" onclick="saveSiteText(['service_card_2_title','service_card_2_desc'])">Save Card 2</button>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:10px;padding:18px">
+            <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:12px">Card 3</div>
+            <div class="field"><label>Title</label><input type="text" id="sc-service_card_3_title" placeholder="Styling Services"></div>
+            <div class="field"><label>Description</label><textarea id="sc-service_card_3_desc" style="min-height:64px"></textarea></div>
+            <div class="field">
+              <label>Photo</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <img id="sc-preview-service_card_3_image" src="" style="height:56px;width:56px;object-fit:cover;border-radius:6px;display:none">
+                <input type="file" id="sc-file-service_card_3_image" accept="image/*" style="flex:1">
+                <button class="btn-add" onclick="uploadSiteImage('service_card_3_image',document.getElementById('sc-file-service_card_3_image'))">Upload</button>
+              </div>
+            </div>
+            <button class="btn-add" onclick="saveSiteText(['service_card_3_title','service_card_3_desc'])">Save Card 3</button>
           </div>
         </div>
       </div>
@@ -1965,7 +2016,7 @@ async function saveWalkin() {
 
 // ── Site Content ─────────────────────────────────────────────────────────
 function siteTab(tab) {
-  ['hero','hours','gallery','contact'].forEach(t => {
+  ['hero','services','hours','gallery','contact'].forEach(t => {
     document.getElementById(`site-tab-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`stab-${t}`).classList.toggle('active', t === tab);
   });
@@ -1973,12 +2024,12 @@ function siteTab(tab) {
 
 async function loadSiteContent() {
   const c = await fetch('/api/site-content').then(r=>r.json()).catch(()=>({}));
-  const keys = ['hero_title','hero_title_highlight','hero_subtitle','hours_mon','hours_tue','hours_wed','hours_thu','hours_fri','hours_sat','hours_sun','cancel_policy','contact_phone','contact_email','contact_address','contact_instagram'];
+  const keys = ['hero_title','hero_title_highlight','hero_subtitle','service_card_1_title','service_card_1_desc','service_card_2_title','service_card_2_desc','service_card_3_title','service_card_3_desc','hours_mon','hours_tue','hours_wed','hours_thu','hours_fri','hours_sat','hours_sun','cancel_policy','contact_phone','contact_email','contact_address','contact_instagram'];
   keys.forEach(k => {
     const el = document.getElementById(`sc-${k}`);
     if (el) el.value = c[k] || '';
   });
-  ['hero_bg_image','hero_banner_image','gallery_1','gallery_2','gallery_3','gallery_4'].forEach(k => {
+  ['hero_bg_image','hero_banner_image','gallery_1','gallery_2','gallery_3','gallery_4','service_card_1_image','service_card_2_image','service_card_3_image'].forEach(k => {
     const prev = document.getElementById(`sc-preview-${k}`);
     if (prev && c[k]) { prev.src = c[k]; prev.style.display = ''; }
   });
