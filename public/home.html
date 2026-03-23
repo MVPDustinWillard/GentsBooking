@@ -607,14 +607,23 @@ fetch('/api/site-content').then(r=>r.json()).then(c => {
     }
   }
   if (c.hero_subtitle) document.getElementById('hero-subtitle').textContent = c.hero_subtitle;
-  if (c.hero_bg_image) document.getElementById('hero-bg').style.backgroundImage = `url('${c.hero_bg_image}')`;
-  if (c.hero_banner_image) document.getElementById('hero-banner-img').src = c.hero_banner_image;
+  if (c.hero_bg_image) {
+    const bg = document.getElementById('hero-bg');
+    bg.style.backgroundImage = `url('${c.hero_bg_image}')`;
+    if (c.hero_bg_image_focal) bg.style.backgroundPosition = c.hero_bg_image_focal;
+  }
+  if (c.hero_banner_image) {
+    const bi = document.getElementById('hero-banner-img');
+    bi.src = c.hero_banner_image;
+    if (c.hero_banner_image_focal) bi.style.objectPosition = c.hero_banner_image_focal;
+  }
   ['mon','tue','wed','thu','fri','sat','sun'].forEach(d => {
     if (c[`hours_${d}`]) document.getElementById(`hours-${d}`).textContent = c[`hours_${d}`];
   });
   if (c.cancel_policy) document.getElementById('cancel-policy').textContent = c.cancel_policy;
   [1,2,3,4].forEach(i => {
     if (c[`gallery_${i}`]) document.getElementById(`gallery-${i}`).src = c[`gallery_${i}`];
+    if (c[`gallery_${i}_focal`]) document.getElementById(`gallery-${i}`).style.objectPosition = c[`gallery_${i}_focal`];
   });
   if (c.contact_phone) {
     const el = document.getElementById('contact-phone');
@@ -632,8 +641,12 @@ fetch('/api/site-content').then(r=>r.json()).then(c => {
       document.getElementById(`svc-card-${i}-title`).textContent = c[`service_card_${i}_title`];
       document.getElementById(`svc-card-${i}-img`).alt = c[`service_card_${i}_title`];
     }
-    if (c[`service_card_${i}_desc`])  document.getElementById(`svc-card-${i}-desc`).textContent  = c[`service_card_${i}_desc`];
-    if (c[`service_card_${i}_image`]) document.getElementById(`svc-card-${i}-img`).src  = c[`service_card_${i}_image`];
+    if (c[`service_card_${i}_desc`])  document.getElementById(`svc-card-${i}-desc`).textContent = c[`service_card_${i}_desc`];
+    if (c[`service_card_${i}_image`]) {
+      const svcImg = document.getElementById(`svc-card-${i}-img`);
+      svcImg.src = c[`service_card_${i}_image`];
+      if (c[`service_card_${i}_image_focal`]) svcImg.style.objectPosition = c[`service_card_${i}_image_focal`];
+    }
   });
   if (c.contact_instagram) {
     document.getElementById('contact-instagram').textContent = c.contact_instagram;

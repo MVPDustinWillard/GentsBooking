@@ -2055,24 +2055,66 @@ async function saveSiteText(keys) {
   }
 }
 
+// Detect face positions in image and return CSS object-position focal point
+async function detectFocalPoint(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = async () => {
+      let focal = '50% 20%'; // default: center, near top — good for most portrait photos
+      if ('FaceDetector' in window) {
+        try {
+          const faces = await new FaceDetector({ fastMode: true }).detect(img);
+          if (faces.length > 0) {
+            // Average the horizontal center of all faces
+            const avgX = faces.reduce((s, f) => s + f.boundingBox.x + f.boundingBox.width / 2, 0) / faces.length;
+            // Use the top of the highest face, shifted up by 40% of avg face height to include hair
+            const avgH = faces.reduce((s, f) => s + f.boundingBox.height, 0) / faces.length;
+            const topY  = Math.min(...faces.map(f => f.boundingBox.y));
+            const focalY = Math.max(0, topY - avgH * 0.4);
+            const px = Math.round((avgX / img.naturalWidth)  * 100);
+            const py = Math.round((focalY / img.naturalHeight) * 100);
+            focal = `${px}% ${py}%`;
+            console.log(`[face-detect] ${faces.length} face(s) detected → focal point ${focal}`);
+          } else {
+            console.log('[face-detect] no faces found, using default focal point');
+          }
+        } catch(e) { console.log('[face-detect] unavailable:', e.message); }
+      }
+      URL.revokeObjectURL(url);
+      resolve(focal);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve('50% 20%'); };
+    img.src = url;
+  });
+}
+
 async function uploadSiteImage(key, input) {
   if (!input.files || !input.files[0]) { alert('Please choose a file first.'); return; }
+  const msg = document.getElementById('site-save-msg');
+  msg.textContent = 'Detecting faces and uploading…';
+  msg.style.background='#f0faf4';msg.style.color='#1a7a4a';msg.style.border='1px solid #b0d8c0';
+  msg.style.display = '';
+
+  const focal = await detectFocalPoint(input.files[0]);
+
   const fd = new FormData();
   fd.append('photo', input.files[0]);
   const res = await fetch(`/api/admin/site-content/upload/${key}`, {method:'POST',body:fd});
-  const msg = document.getElementById('site-save-msg');
   if (res.ok) {
     const data = await res.json();
+    // Save focal point alongside the image URL
+    await fetch('/api/admin/site-content', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({[`${key}_focal`]: focal})
+    });
     const prev = document.getElementById(`sc-preview-${key}`);
     if (prev) { prev.src = data.url; prev.style.display = ''; }
-    msg.textContent = `Image uploaded! Changes will appear on the home page.`;
-    msg.style.background='#f0faf4';msg.style.color='#1a7a4a';msg.style.border='1px solid #b0d8c0';
-    msg.style.display = '';
-    setTimeout(()=>{ msg.style.display='none'; }, 3000);
+    msg.textContent = 'Image uploaded! The home page will auto-crop to show the full head.';
+    setTimeout(()=>{ msg.style.display='none'; }, 3500);
   } else {
     msg.textContent = 'Upload failed.';
     msg.style.background='#fef0f0';msg.style.color='#c0392b';msg.style.border='1px solid #f5c6c6';
-    msg.style.display = '';
   }
 }
 </script>
