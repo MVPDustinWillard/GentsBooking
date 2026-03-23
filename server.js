@@ -171,7 +171,7 @@ if (RESEND_KEY) console.log('[email] Resend configured — emails will be sent')
 else            console.log('[email] No RESEND_API_KEY — emails will be skipped');
 
 async function sendEmail(to, subject, html, attachments) {
-  if (!RESEND_KEY) {
+  if (!RESEND_KEY || process.env.DISABLE_EMAIL_SENDS === 'true' || /@(test|example)\.com$/i.test(to)) {
     console.log(`[email] (dev) Would send "${subject}" to ${to}`);
     return;
   }
@@ -306,7 +306,7 @@ async function sendBookingConfirmation(booking) {
       `Location: 893 Lafayette Rd, Hampton, NH\n` +
       `Booking #${booking.id}`;
 
-    if (emailCfg.sms?.enabled && smsClient) {
+    if (emailCfg.sms?.enabled && smsClient && process.env.DISABLE_EMAIL_SENDS !== 'true') {
       await smsClient.messages.create({
         body: smsBody,
         from: emailCfg.sms.fromNumber,
@@ -364,7 +364,7 @@ async function sendReminderMessage(booking, hoursAhead) {
   console.log(`[email] Sent ${hoursAhead}h reminder to ${booking.customer_email}`);
   if (booking.customer_phone) {
     const smsBody = `Gents Barber Shop: Reminder! Your ${booking.service_name} appointment is in ${hoursAhead} hour${hoursAhead>1?'s':''} at ${fmtTimeFn(booking.appointment_time)}. 893 Lafayette Rd, Hampton NH.`;
-    if (emailCfg.sms?.enabled && smsClient) {
+    if (emailCfg.sms?.enabled && smsClient && process.env.DISABLE_EMAIL_SENDS !== 'true') {
       await smsClient.messages.create({ body: smsBody, from: emailCfg.sms.fromNumber, to: booking.customer_phone });
       console.log(`[sms] Sent ${hoursAhead}h reminder to ${booking.customer_phone}`);
     } else {
@@ -409,7 +409,7 @@ async function sendNoShowMessage(booking) {
   console.log(`[email] Sent no-show message to ${booking.customer_email}`);
   if (booking.customer_phone) {
     const smsBody = `Hi ${first}, we missed you at Gents Barber Shop today! No worries — call us or visit our website to rebook. We'd love to see you soon!`;
-    if (emailCfg.sms?.enabled && smsClient) {
+    if (emailCfg.sms?.enabled && smsClient && process.env.DISABLE_EMAIL_SENDS !== 'true') {
       await smsClient.messages.create({ body: smsBody, from: emailCfg.sms.fromNumber, to: booking.customer_phone });
       console.log(`[sms] Sent no-show SMS to ${booking.customer_phone}`);
     } else {
@@ -598,8 +598,19 @@ app.post('/api/bookings', async (req,res) => {
   if (stylist_id && !db.prepare('SELECT id FROM stylists WHERE id=? AND active=1').get(stylist_id))
     return res.status(400).json({error:'Invalid or inactive barber'});
 
+  // Resolve canonical email in case this address was previously merged
+  const merged = db.prepare('SELECT merged_into FROM customers WHERE email=? AND merged_into IS NOT NULL').get(customer_email);
+  const canonical_email = merged ? merged.merged_into : customer_email;
+
+  // Upsert customer record early (before conflict checks) so they're always in the system
+  db.prepare(`INSERT INTO customers (email, name, phone)
+    VALUES (?,?,?) ON CONFLICT(email) DO UPDATE SET
+    name=CASE WHEN excluded.name!='' THEN excluded.name ELSE name END,
+    phone=CASE WHEN excluded.phone!='' THEN excluded.phone ELSE phone END`)
+    .run(canonical_email, customer_name, customer_phone||'');
+
   // Check if customer is blocked from online booking
-  const custRec = db.prepare('SELECT blocked FROM customers WHERE email=?').get(customer_email);
+  const custRec = db.prepare('SELECT blocked FROM customers WHERE email=?').get(canonical_email);
   if (custRec?.blocked) return res.status(403).json({error:'Online booking is not available for this account. Please call us directly.'});
 
   const conflict = db.prepare(
@@ -618,17 +629,6 @@ app.post('/api/bookings', async (req,res) => {
     LEFT JOIN stylists s ON b.stylist_id=s.id
     LEFT JOIN services svc ON b.service_id=svc.id
     WHERE b.id=?`).get(r.lastInsertRowid);
-
-  // Resolve canonical email in case this address was previously merged
-  const merged = db.prepare('SELECT merged_into FROM customers WHERE email=? AND merged_into IS NOT NULL').get(customer_email);
-  const canonical_email = merged ? merged.merged_into : customer_email;
-
-  // Upsert customer record under canonical email
-  db.prepare(`INSERT INTO customers (email, name, phone)
-    VALUES (?,?,?) ON CONFLICT(email) DO UPDATE SET
-    name=CASE WHEN excluded.name!='' THEN excluded.name ELSE name END,
-    phone=CASE WHEN excluded.phone!='' THEN excluded.phone ELSE phone END`)
-    .run(canonical_email, customer_name, customer_phone||'');
 
   // Send confirmation email (non-blocking)
   sendBookingConfirmation(booking).catch(e => console.error('[email error]', e.message));
@@ -1073,7 +1073,7 @@ app.post('/api/admin/customers/broadcast', requireAdmin, async (req,res) => {
         await sendEmail(c.email, subject || 'Message from Gents Barber Shop',
           `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#fff;border-radius:8px">${message.replace(/\n/g,'<br>')}<p style="margin-top:24px;font-size:12px;color:#aaa">Gents Barber Shop · 893 Lafayette Road, Hampton, NH</p></div>`);
       }
-      if (c.phone && emailCfg.sms?.enabled && smsClient) {
+      if (c.phone && emailCfg.sms?.enabled && smsClient && process.env.DISABLE_EMAIL_SENDS !== 'true' && !/@(test|example)\.com$/i.test(c.email||'')) {
         await smsClient.messages.create({ body: message, from: emailCfg.sms.fromNumber, to: c.phone });
       }
       sent++;
@@ -1091,7 +1091,7 @@ app.post('/api/admin/bookings/:id/remind', requireAdmin, async (req,res) => {
     LEFT JOIN services svc ON b.service_id=svc.id
     WHERE b.id=?`).get(req.params.id);
   if (!booking) return res.status(404).json({error:'Booking not found'});
-  await sendReminderMessage(booking, 24).catch(e => { throw e; });
+  await sendReminderMessage(booking, 24).catch(e => console.error('[remind error]', e.message));
   res.json({ok:true});
 });
 
