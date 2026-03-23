@@ -227,18 +227,26 @@
       font-size: 11px; font-weight: 800; color: var(--gold);
       text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;
     }
-    .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
+    .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
     .slot-btn {
-      padding: 10px 6px; border: 2px solid var(--border); border-radius: 10px;
-      background: var(--white); font-size: 13px; font-weight: 600; cursor: pointer;
-      text-align: center; transition: all .15s; color: var(--text);
+      padding: 12px 6px; border: 2px solid var(--border); border-radius: 10px;
+      background: var(--white); font-size: 14px; font-weight: 600; cursor: pointer;
+      text-align: center; transition: all .15s; color: var(--text); min-height: 48px;
     }
     .slot-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .slot-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
     .slot-btn.selected {
       background: var(--accent); border-color: var(--accent);
       color: #fff; font-weight: 800; box-shadow: 0 2px 10px rgba(139,26,26,.3);
     }
     .no-slots { font-size: 14px; color: var(--muted); padding: 10px 0; }
+    @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+    .slot-skeleton {
+      height: 48px; border-radius: 10px;
+      background: linear-gradient(90deg, #ede8e0 25%, #f5f2ed 50%, #ede8e0 75%);
+      background-size: 400px 100%;
+      animation: shimmer 1.2s infinite;
+    }
 
     /* ── CONTACT FORM ── */
     .form-body { padding: 18px 22px 22px; }
@@ -248,7 +256,8 @@
       width: 100%; border: 2px solid var(--border); border-radius: 10px;
       padding: 11px 14px; font-size: 15px; font-family: inherit; transition: border-color .15s;
     }
-    .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+    .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,26,26,.12); }
+    .btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
     .field.required label::after { content: ' *'; color: var(--accent); }
     .field textarea { resize: vertical; min-height: 80px; }
 
@@ -649,10 +658,21 @@ async function loadSlots() {
   document.getElementById('btn-3-next').disabled = true;
   const barberId = state.selectedBarber?.id;
   const url = `/api/availability?date=${date}${barberId ? `&stylist_id=${barberId}` : ''}`;
-  const data = await fetch(url).then(r => r.json());
   const grid = document.getElementById('slots-grid');
+
+  // Show skeleton while loading
+  grid.innerHTML = Array(8).fill('<div class="slot-skeleton"></div>').join('');
+
+  let data;
+  try {
+    data = await fetch(url).then(r => r.json());
+  } catch(_) {
+    grid.innerHTML = `<div class="no-slots" style="grid-column:1/-1">Couldn't load times. <button onclick="loadSlots()" style="background:none;border:none;color:var(--accent);font-weight:700;cursor:pointer;text-decoration:underline;font-size:14px;padding:0;font-family:inherit">Try again →</button></div>`;
+    return;
+  }
+
   if (data.closed) {
-    grid.innerHTML = `<div class="no-slots">We're closed on this day. Please choose another date.</div>`;
+    grid.innerHTML = `<div class="no-slots" style="grid-column:1/-1">We're closed on this day. Please choose another date.</div>`;
     return;
   }
   // Filter slots to business hours for this day
@@ -661,7 +681,7 @@ async function loadSlots() {
     slots = slots.filter(s => s >= data.hours.open && s < data.hours.close);
   }
   if (!slots.length) {
-    grid.innerHTML = `<div class="no-slots">No available times on this date. Please choose another day.</div>`;
+    grid.innerHTML = `<div class="no-slots" style="grid-column:1/-1">No available times on this date. Please choose another day.</div>`;
     return;
   }
   // Group slots into AM and PM

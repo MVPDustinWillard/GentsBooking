@@ -209,6 +209,13 @@
       transition: background .15s;
     }
     .map-btn:hover { background: #6b1212; }
+    @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+    .price-skeleton {
+      height: 220px; border-radius: 14px;
+      background: linear-gradient(90deg, #ede8e0 25%, #f5f2ed 50%, #ede8e0 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite;
+    }
     .instagram-link {
       display: inline-flex; align-items: center; gap: 8px;
       background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
@@ -362,7 +369,10 @@
     <div class="divider"></div>
     <p class="section-sub">No surprises. Every cut, every time. Pricing below reflects our full service menu.</p>
     <div id="pricing-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
-      <div style="background:#fff;border-radius:12px;padding:22px;border:1px solid #e4ddd0;text-align:center;color:#888;font-size:14px">Loading services…</div>
+      <div class="price-skeleton"></div>
+      <div class="price-skeleton"></div>
+      <div class="price-skeleton"></div>
+      <div class="price-skeleton"></div>
     </div>
     <div style="text-align:center;margin-top:40px">
       <a href="/booking" style="display:inline-block;background:#8b1a1a;color:#fff;padding:14px 40px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;transition:background .15s" onmouseover="this.style.background='#6b1212'" onmouseout="this.style.background='#8b1a1a'">Book an Appointment →</a>
