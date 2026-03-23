@@ -120,10 +120,19 @@ db.prepare(`
 
 // ── Site content table ─────────────────────────────────────────────────────
 db.exec(`CREATE TABLE IF NOT EXISTS site_content (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+// Migrate: strip HTML from hero_title if it was stored with span tags
+try {
+  const ht = db.prepare("SELECT value FROM site_content WHERE key='hero_title'").get();
+  if (ht && ht.value.includes('<')) {
+    db.prepare("UPDATE site_content SET value=? WHERE key='hero_title'")
+      .run(ht.value.replace(/<[^>]+>/g, ''));
+  }
+} catch(_) {}
 (() => {
   const ins = db.prepare('INSERT OR IGNORE INTO site_content (key,value) VALUES (?,?)');
   [
-    ['hero_title',      'Welcome to <span>Gents</span> Barbershop'],
+    ['hero_title',      'Welcome to Gents Barbershop'],
+    ['hero_title_highlight', 'Gents'],
     ['hero_subtitle',   'Experience the timeless traditional values of an old-time barber shop with specific enhancements targeted to meet the needs of today\'s gentleman — in a friendly establishment for men and boys that consistently offers the very best in services, products and camaraderie at an affordable price.'],
     ['hero_bg_image',   '/images/gents/thumb-1.jpg'],
     ['hero_banner_image','/images/gents/hero.jpg'],
@@ -136,9 +145,9 @@ db.exec(`CREATE TABLE IF NOT EXISTS site_content (key TEXT PRIMARY KEY, value TE
     ['hours_sun',       '9am – 3pm'],
     ['cancel_policy',   'We understand that life can sometimes be unpredictable! Please allow a minimum of 2 hours for any cancellations to avoid a No Show Fee (this fee will be applied to your next visit). You can cancel anytime by calling us or by email. We thank you for your understanding. — The Gents Team'],
     ['gallery_1',       '/images/gents/staff-4.jpg'],
-    ['gallery_2',       '/images/gents/thumb-3.jpg'],
-    ['gallery_3',       '/images/gents/staff-2.jpg'],
-    ['gallery_4',       '/images/gents/thumb-4.jpg'],
+    ['gallery_2',       '/images/gents/thumb-4.jpg'],
+    ['gallery_3',       '/images/gents/thumb-3.jpg'],
+    ['gallery_4',       '/images/gents/thumb-1.jpg'],
     ['contact_phone',   '603-601-8615'],
     ['contact_email',   'shellysgents@gmail.com'],
     ['contact_address', '893 Lafayette Road, Hampton, New Hampshire 03842'],

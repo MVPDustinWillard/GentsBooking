@@ -596,7 +596,16 @@
 <script>
 // Hydrate home page from site content API
 fetch('/api/site-content').then(r=>r.json()).then(c => {
-  if (c.hero_title) document.getElementById('hero-title').innerHTML = c.hero_title;
+  if (c.hero_title) {
+    const titleEl = document.getElementById('hero-title');
+    const word = (c.hero_title_highlight || '').trim();
+    if (word) {
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      titleEl.innerHTML = c.hero_title.replace(new RegExp(`(${escaped})`, 'i'), '<span>$1</span>');
+    } else {
+      titleEl.textContent = c.hero_title;
+    }
+  }
   if (c.hero_subtitle) document.getElementById('hero-subtitle').textContent = c.hero_subtitle;
   if (c.hero_bg_image) document.getElementById('hero-bg').style.backgroundImage = `url('${c.hero_bg_image}')`;
   if (c.hero_banner_image) document.getElementById('hero-banner-img').src = c.hero_banner_image;

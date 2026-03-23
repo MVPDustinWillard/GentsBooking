@@ -472,10 +472,11 @@
       <!-- Hero tab -->
       <div id="site-tab-hero" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:700px">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">Hero Section</h3>
-        <div class="field"><label>Hero Title (HTML allowed for &lt;span&gt;)</label><input type="text" id="sc-hero_title"></div>
+        <div class="field"><label>Hero Title</label><input type="text" id="sc-hero_title" placeholder="Welcome to Gents Barbershop"><div class="hint">Plain text — no code needed.</div></div>
+        <div class="field"><label>Highlighted Word <span style="color:#c9a95a;font-size:11px;font-weight:700">(shown in gold on home page)</span></label><input type="text" id="sc-hero_title_highlight" placeholder="Gents"><div class="hint">This word in the title will appear in gold. Leave blank for no highlight.</div></div>
         <div class="field"><label>Hero Subtitle</label><textarea id="sc-hero_subtitle" style="min-height:80px"></textarea></div>
         <div style="margin-bottom:16px">
-          <button class="btn-add" onclick="saveSiteText(['hero_title','hero_subtitle'])">Save Text</button>
+          <button class="btn-add" onclick="saveSiteText(['hero_title','hero_title_highlight','hero_subtitle'])">Save Text</button>
         </div>
         <div class="field">
           <label>Hero Background Image</label>
@@ -513,7 +514,8 @@
 
       <!-- Gallery tab -->
       <div id="site-tab-gallery" style="display:none;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:700px">
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">Gallery Images</h3>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:6px">Gallery Images</h3>
+        <p style="font-size:13px;color:#888;margin-bottom:16px;line-height:1.6">Showcase the <strong>barbershop experience</strong> — the shop atmosphere, team, happy clients, or the vibe. Use photos that are different from the service section (which already shows haircuts &amp; beard trims).</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div>
             <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:6px">Image 1</div>
@@ -1971,7 +1973,7 @@ function siteTab(tab) {
 
 async function loadSiteContent() {
   const c = await fetch('/api/site-content').then(r=>r.json()).catch(()=>({}));
-  const keys = ['hero_title','hero_subtitle','hours_mon','hours_tue','hours_wed','hours_thu','hours_fri','hours_sat','hours_sun','cancel_policy','contact_phone','contact_email','contact_address','contact_instagram'];
+  const keys = ['hero_title','hero_title_highlight','hero_subtitle','hours_mon','hours_tue','hours_wed','hours_thu','hours_fri','hours_sat','hours_sun','cancel_policy','contact_phone','contact_email','contact_address','contact_instagram'];
   keys.forEach(k => {
     const el = document.getElementById(`sc-${k}`);
     if (el) el.value = c[k] || '';
