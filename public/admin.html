@@ -1045,10 +1045,14 @@ async function init() {
     barbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active).forEach(s => {
       const o = document.createElement('option'); o.value=s.id; o.textContent=s.name; wbSel.appendChild(o);
     });
-    // Populate block-time barber select (admin can block for anyone)
+    // Populate block-time barber select (admin can block for anyone, including themselves)
     const btSel = document.getElementById('bt-barber');
-    barbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active).forEach(s => {
-      const o = document.createElement('option'); o.value=s.id; o.textContent=s.name; btSel.appendChild(o);
+    const btBarbers = barbers.filter(s => s.active);
+    btBarbers.sort((a,b) => (a.id===me.id ? -1 : b.id===me.id ? 1 : 0)); // self first
+    btBarbers.forEach(s => {
+      const o = document.createElement('option'); o.value=s.id;
+      o.textContent = s.id===me.id ? `${s.name} (Me)` : s.name;
+      btSel.appendChild(o);
     });
     document.getElementById('bt-barber-wrap').style.display = '';
     loadRevenue();
