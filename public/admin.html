@@ -1042,13 +1042,13 @@ async function init() {
     const barbers = await fetch('/api/admin/barbers').then(r=>r.json()).catch(e=>{console.error('[init] barbers',e);return[];});
     allBarbers = barbers;
     const sel = document.getElementById('f-barber');
-    barbers.filter(s=>s.role==='barber'||s.role==='stylist').forEach(s => {
+    barbers.filter(s=>s.role==='barber'||s.role==='stylist'||s.is_barber).forEach(s => {
       const o = document.createElement('option');
       o.value = s.id; o.textContent = s.name; sel.appendChild(o);
     });
     // Populate walk-in barber select
     const wbSel = document.getElementById('wi-barber');
-    barbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active).forEach(s => {
+    barbers.filter(s=>(s.role==='barber'||s.role==='stylist'||s.is_barber)&&s.active).forEach(s => {
       const o = document.createElement('option'); o.value=s.id; o.textContent=s.name; wbSel.appendChild(o);
     });
     // Populate block-time barber select (admin can block for anyone, including themselves)
@@ -1187,7 +1187,7 @@ function renderBookings(bookings) {
 }
 
 function renderAssign(b) {
-  const opts = allBarbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active)
+  const opts = allBarbers.filter(s=>(s.role==='barber'||s.role==='stylist'||s.is_barber)&&s.active)
     .map(s=>`<option value="${s.id}" ${b.stylist_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
   return `<select class="assign-select" onchange="assignBarber(${b.id},this.value)">
     <option value="" ${!b.stylist_id?'selected':''}>Unassigned</option>${opts}
@@ -1736,7 +1736,7 @@ async function openReassignModal(bookingId) {
   // Populate barber select
   const barberSel = document.getElementById('ra-barber');
   barberSel.innerHTML = `<option value="">Unassigned</option>` +
-    allBarbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active)
+    allBarbers.filter(s=>(s.role==='barber'||s.role==='stylist'||s.is_barber)&&s.active)
       .map(s=>`<option value="${s.id}" ${b.stylist_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
   // Set date and populate times
   document.getElementById('ra-date').value = b.appointment_date;
