@@ -644,10 +644,16 @@
       <div class="field"><label>Bio / Specialties</label><textarea id="edit-bio"></textarea></div>
       <div class="field" id="edit-role-wrap">
         <label>Role</label>
-        <select id="edit-role">
+        <select id="edit-role" onchange="toggleIsBarberField()">
           <option value="barber">Barber</option>
           <option value="admin">Admin</option>
         </select>
+      </div>
+      <div class="field" id="edit-is-barber-wrap" style="display:none">
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:14px;font-weight:600;cursor:pointer">
+          <input type="checkbox" id="edit-is-barber">
+          Also takes appointments (appears on booking page as a barber)
+        </label>
       </div>
     </div>
     <div class="modal-footer">
@@ -1047,7 +1053,7 @@ async function init() {
     });
     // Populate block-time barber select (admin can block for anyone, including themselves)
     const btSel = document.getElementById('bt-barber');
-    const btBarbers = barbers.filter(s => s.active);
+    const btBarbers = barbers.filter(s => s.active && (s.role==='barber' || s.role==='stylist' || s.is_barber));
     btBarbers.sort((a,b) => (a.id===me.id ? -1 : b.id===me.id ? 1 : 0)); // self first
     btBarbers.forEach(s => {
       const o = document.createElement('option'); o.value=s.id;
@@ -1245,6 +1251,7 @@ async function loadTeam() {
           <div class="team-name">
             ${esc(m.name)}
             <span class="team-badge ${m.active?(m.role==='admin'?'tb-admin':'tb-barber'):'tb-inactive'}">${m.active?(m.role==='admin'?'admin':'barber'):'inactive'}</span>
+            ${m.role==='admin'&&m.is_barber?'<span class="team-badge tb-barber" style="margin-left:2px">✂ takes appts</span>':''}
           </div>
           <div class="team-username">@${esc(m.username)}</div>
         </div>
@@ -1305,6 +1312,11 @@ async function addMember() {
   btn.disabled=false;btn.textContent='Add Member';
 }
 
+function toggleIsBarberField() {
+  const role = document.getElementById('edit-role').value;
+  document.getElementById('edit-is-barber-wrap').style.display = role === 'admin' ? '' : 'none';
+}
+
 function openEditModal(id) {
   const m = allBarbers.find(s=>s.id===id);
   if(!m)return;
@@ -1312,8 +1324,10 @@ function openEditModal(id) {
   document.getElementById('edit-name').value=m.name;
   document.getElementById('edit-bio').value=m.bio||'';
   document.getElementById('edit-role').value=m.role;
+  document.getElementById('edit-is-barber').checked=!!m.is_barber;
   document.getElementById('edit-err').classList.remove('show');
   document.getElementById('edit-modal-title').textContent=`Edit — ${m.name}`;
+  toggleIsBarberField();
   openModal('edit-modal');
 }
 
@@ -1328,7 +1342,8 @@ async function saveEdit() {
   const btn=document.getElementById('btn-edit-save');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Saving...';
   try{
-    const res=await fetch(`/api/admin/barbers/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,bio,role})});
+    const is_barber = role==='admin' ? document.getElementById('edit-is-barber').checked : true;
+    const res=await fetch(`/api/admin/barbers/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,bio,role,is_barber})});
     const data=await res.json();
     if(!res.ok)throw new Error(data.error);
     closeModal('edit-modal');

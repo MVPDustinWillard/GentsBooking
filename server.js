@@ -66,6 +66,9 @@ db.exec(`
 
 // ── Migrate: add photo_url column if missing ───────────────────────────────
 try { db.exec("ALTER TABLE stylists ADD COLUMN photo_url TEXT DEFAULT ''"); } catch(_) {}
+// ── Migrate: add is_barber flag (admin who also takes appointments) ──────────
+try { db.exec("ALTER TABLE stylists ADD COLUMN is_barber INTEGER NOT NULL DEFAULT 0"); } catch(_) {}
+db.prepare("UPDATE stylists SET is_barber=1 WHERE role IN ('barber','stylist') AND is_barber=0").run();
 
 // ── Customers table ────────────────────────────────────────────────────────
 db.exec(`
@@ -534,7 +537,7 @@ app.get('/barber-day', requireAuth, (_req, res) => res.sendFile(path.join(__dirn
 app.get('/api/services', (_req,res) => res.json(db.prepare('SELECT * FROM services WHERE active=1').all()));
 
 app.get('/api/barbers', (_req,res) =>
-  res.json(db.prepare("SELECT id,name,bio,photo_url FROM stylists WHERE active=1 AND role IN ('barber','stylist')").all()));
+  res.json(db.prepare("SELECT id,name,bio,photo_url FROM stylists WHERE active=1 AND (role IN ('barber','stylist') OR is_barber=1)").all()));
 
 app.get('/api/availability', (req,res) => {
   const { stylist_id, date } = req.query;
@@ -745,7 +748,7 @@ app.patch('/api/admin/bookings/:id', requireAdmin, async (req,res) => {
 
 // ── Admin: Barbers (account management) ───────────────────────────────────
 app.get('/api/admin/barbers', requireAdmin, (_req,res) =>
-  res.json(db.prepare("SELECT id,name,username,bio,role,active,photo_url FROM stylists ORDER BY role DESC, name ASC").all()));
+  res.json(db.prepare("SELECT id,name,username,bio,role,active,photo_url,is_barber FROM stylists ORDER BY role DESC, name ASC").all()));
 
 // Admin upload photo for any member
 app.post('/api/admin/barbers/:id/photo', requireAdmin, upload.single('photo'), (req,res) => {
@@ -773,7 +776,7 @@ app.post('/api/admin/barbers', requireAdmin, (req,res) => {
 });
 
 app.patch('/api/admin/barbers/:id', requireAdmin, (req,res) => {
-  const { name, bio, role, active, new_password } = req.body;
+  const { name, bio, role, active, new_password, is_barber } = req.body;
   const s = db.prepare('SELECT * FROM stylists WHERE id=?').get(req.params.id);
   if (!s) return res.status(404).json({error:'Not found'});
   // Prevent removing the last admin
@@ -786,6 +789,7 @@ app.patch('/api/admin/barbers/:id', requireAdmin, (req,res) => {
   if (bio!==undefined)          { updates.push('bio=?');           p.push(bio); }
   if (role!==undefined)         { updates.push('role=?');          p.push(role); }
   if (active!==undefined)       { updates.push('active=?');        p.push(active?1:0); }
+  if (is_barber!==undefined)    { updates.push('is_barber=?');     p.push(is_barber?1:0); }
   if (new_password) {
     if (new_password.length < 6) return res.status(400).json({error:'Password must be at least 6 characters'});
     updates.push('password_hash=?'); p.push(bcrypt.hashSync(new_password,10));
@@ -793,7 +797,7 @@ app.patch('/api/admin/barbers/:id', requireAdmin, (req,res) => {
   if (!updates.length) return res.status(400).json({error:'Nothing to update'});
   p.push(req.params.id);
   db.prepare(`UPDATE stylists SET ${updates.join(',')} WHERE id=?`).run(...p);
-  res.json(db.prepare('SELECT id,name,username,bio,role,active FROM stylists WHERE id=?').get(req.params.id));
+  res.json(db.prepare('SELECT id,name,username,bio,role,active,is_barber FROM stylists WHERE id=?').get(req.params.id));
 });
 
 // ── Admin: Customers ───────────────────────────────────────────────────────
@@ -923,7 +927,7 @@ app.get('/api/admin/analytics', requireAdmin, (req, res) => {
     FROM bookings b
     JOIN stylists s ON b.stylist_id=s.id
     JOIN services svc ON b.service_id=svc.id
-    WHERE b.appointment_date >= ? AND s.role IN ('barber','stylist')
+    WHERE b.appointment_date >= ? AND (s.role IN ('barber','stylist') OR s.is_barber=1)
     GROUP BY s.id ORDER BY revenue_month DESC`).all(monthStart);
 
   const statusBreakdown = db.prepare(`
@@ -1073,7 +1077,7 @@ app.post('/api/admin/blocked-times', requireAdmin, (req,res) => {
 app.get('/api/admin/schedule', requireAuth, (req,res) => {
   const { date } = req.query;
   if (!date) return res.status(400).json({error:'date required'});
-  const barbers  = db.prepare("SELECT id,name,photo_url FROM stylists WHERE active=1 AND role IN ('barber','stylist') ORDER BY name").all();
+  const barbers  = db.prepare("SELECT id,name,photo_url FROM stylists WHERE active=1 AND (role IN ('barber','stylist') OR is_barber=1) ORDER BY name").all();
   const bookings = db.prepare(`
     SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min
     FROM bookings b
