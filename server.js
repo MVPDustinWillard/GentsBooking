@@ -5,7 +5,6 @@ const express    = require('express');
 const Database   = require('better-sqlite3');
 const bcrypt     = require('bcryptjs');
 const session    = require('express-session');
-const https      = require('https');
 const multer     = require('multer');
 const twilio     = require('twilio');
 const path       = require('path');
@@ -194,26 +193,18 @@ async function sendEmail(to, subject, html, attachments) {
     return;
   }
   const body = { from: 'Gents Barber Shop <noreply@gentsbarbershop.com>', to: [to], subject, html };
-  if (attachments && attachments.length) {
+  if (attachments?.length) {
     body.attachments = attachments.map(a => ({
       filename: a.filename,
       content:  Buffer.from(a.content).toString('base64'),
     }));
   }
-  const data = JSON.stringify(body);
-  await new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname: 'api.resend.com', path: '/emails', method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
-    }, res => {
-      let raw = '';
-      res.on('data', c => raw += c);
-      res.on('end', () => res.statusCode < 300 ? resolve() : reject(new Error(`Resend ${res.statusCode}: ${raw}`)));
-    });
-    req.on('error', reject);
-    req.write(data);
-    req.end();
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
+  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
 }
 
 function fmtTimeFn(t) {
@@ -514,10 +505,11 @@ app.get('/booking', (_req, res) => res.sendFile(path.join(__dirname, 'public', '
 app.get('/manage-booking/:token', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'manage-booking.html')));
 // ── Middleware ─────────────────────────────────────────────────────────────
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', etag: true }));
 // Serve uploaded photos from persistent volume on Railway
+// Uploads use content-addressed filenames from multer — safe to cache aggressively
 if (process.env.RAILWAY_ENVIRONMENT) {
-  app.use('/uploads', express.static('/data/uploads'));
+  app.use('/uploads', express.static('/data/uploads', { maxAge: '7d', immutable: true }));
 }
 app.use(session({
   secret: process.env.SESSION_SECRET || 'gents-barber-shop-secret-2026-xK9mP3rQ',

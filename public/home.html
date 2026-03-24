@@ -225,6 +225,18 @@
     }
     .instagram-link:hover { opacity: .88; }
 
+    /* ── Dynamic hover classes (CSS replaces inline onmouseover/onmouseout) ── */
+    .cta-gold-btn { background: #c9a95a; }
+    .cta-gold-btn:hover { background: #b8963e !important; }
+    .cta-dark-btn { background: #8b1a1a; }
+    .cta-dark-btn:hover { background: #6b1212 !important; }
+    .team-card-dynamic { transition: box-shadow .2s; }
+    .team-card-dynamic:hover { box-shadow: 0 8px 28px rgba(0,0,0,.1); }
+    .price-card { transition: box-shadow .2s; }
+    .price-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1) !important; }
+    .price-card-btn { transition: background .15s, color .15s; }
+    .price-card-btn:hover { background: #8b1a1a !important; color: #fff !important; }
+
     /* ── FOOTER ── */
     footer {
       background: #1a0707; color: #c8b8a8; text-align: center;
@@ -315,7 +327,7 @@
       </div>
     </div>
     <div style="margin-top:44px">
-      <a href="/booking" style="display:inline-block;background:#c9a95a;color:#1a0707;padding:15px 42px;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none;letter-spacing:.4px;transition:background .2s" onmouseover="this.style.background='#b8963e'" onmouseout="this.style.background='#c9a95a'">Book Your Appointment →</a>
+      <a href="/booking" class="cta-gold-btn" style="display:inline-block;color:#1a0707;padding:15px 42px;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none;letter-spacing:.4px;transition:background .2s">Book Your Appointment →</a>
     </div>
   </div>
 </section>
@@ -330,7 +342,7 @@
     <div class="services-grid">
       <div class="service-card">
         <div class="service-card-img">
-          <img id="svc-card-1-img" src="/images/gents/staff-2.jpg" alt="Hair Cuts" style="object-position: center 10%">
+          <img id="svc-card-1-img" src="/images/gents/staff-2.jpg" alt="Hair Cuts" style="object-position: center 10%" loading="lazy">
           <div class="service-card-label" id="svc-card-1-title">Hair Cuts</div>
         </div>
         <div class="service-card-body">
@@ -340,7 +352,7 @@
       </div>
       <div class="service-card">
         <div class="service-card-img">
-          <img id="svc-card-2-img" src="/images/gents/staff-3.jpg" alt="Beard Trims" style="object-position: center 60%">
+          <img id="svc-card-2-img" src="/images/gents/staff-3.jpg" alt="Beard Trims" style="object-position: center 60%" loading="lazy">
           <div class="service-card-label" id="svc-card-2-title">Beard Trims</div>
         </div>
         <div class="service-card-body">
@@ -350,7 +362,7 @@
       </div>
       <div class="service-card">
         <div class="service-card-img">
-          <img id="svc-card-3-img" src="/images/gents/staff-5.jpg" alt="Styling Services" style="object-position: center 35%">
+          <img id="svc-card-3-img" src="/images/gents/staff-5.jpg" alt="Styling Services" style="object-position: center 35%" loading="lazy">
           <div class="service-card-label" id="svc-card-3-title">Styling Services</div>
         </div>
         <div class="service-card-body">
@@ -376,7 +388,7 @@
       <div class="price-skeleton"></div>
     </div>
     <div style="text-align:center;margin-top:40px">
-      <a href="/booking" style="display:inline-block;background:#8b1a1a;color:#fff;padding:14px 40px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;transition:background .15s" onmouseover="this.style.background='#6b1212'" onmouseout="this.style.background='#8b1a1a'">Book an Appointment →</a>
+      <a href="/booking" class="cta-dark-btn" style="display:inline-block;color:#fff;padding:14px 40px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;transition:background .15s">Book an Appointment →</a>
     </div>
   </div>
 </section>
@@ -389,16 +401,16 @@
   </div>
   <div class="gallery-strip">
     <a href="/booking" title="Book a haircut">
-      <img id="gallery-1" src="/images/gents/staff-4.jpg" alt="Happy young client after fresh haircut">
+      <img id="gallery-1" src="/images/gents/staff-4.jpg" alt="Happy young client after fresh haircut" loading="lazy">
     </a>
     <a href="/booking" title="Book a styling service">
-      <img id="gallery-2" src="/images/gents/thumb-3.jpg" alt="The Gents team" style="object-position: center top">
+      <img id="gallery-2" src="/images/gents/thumb-3.jpg" alt="The Gents team" style="object-position: center top" loading="lazy">
     </a>
     <a href="/booking" title="Book an appointment">
-      <img id="gallery-3" src="/images/gents/staff-2.jpg" alt="Client showing off great beard trim result">
+      <img id="gallery-3" src="/images/gents/staff-2.jpg" alt="Client showing off great beard trim result" loading="lazy">
     </a>
     <a href="/booking" title="Fun for all ages">
-      <img id="gallery-4" src="/images/gents/thumb-4.jpg" alt="Young clients enjoying the barbershop" style="object-position: center center">
+      <img id="gallery-4" src="/images/gents/thumb-4.jpg" alt="Young clients enjoying the barbershop" style="object-position: center center" loading="lazy">
     </a>
   </div>
 </section>
@@ -428,7 +440,7 @@
         </div>
       </div>
       <div>
-        <img class="hours-team-img" src="/images/gents/thumb-3.jpg" alt="The Gents Barbershop team">
+        <img class="hours-team-img" src="/images/gents/thumb-3.jpg" alt="The Gents Barbershop team" loading="lazy">
       </div>
     </div>
   </div>
@@ -570,7 +582,7 @@
 
 <!-- ── FOOTER ── -->
 <footer>
-  <img class="footer-banner" src="/images/gents/hero.jpg" alt="Gents Barbershop">
+  <img class="footer-banner" src="/images/gents/hero.jpg" alt="Gents Barbershop" loading="lazy">
   <div>893 Lafayette Road, Hampton, New Hampshire 03842</div>
   <div>
     <a href="tel:6036018615">603-601-8615</a>
@@ -653,7 +665,7 @@ fetch('/api/site-content').then(r=>r.json()).then(c => {
     const handle = c.contact_instagram.replace(/^@/,'');
     document.getElementById('contact-instagram-link').href = `https://www.instagram.com/${handle}`;
   }
-}).catch(()=>{});
+}).catch(e => console.error('[site-content]', e));
 
 function toggleMenu() {
   document.getElementById('nav-burger').classList.toggle('open');
@@ -671,9 +683,9 @@ fetch('/api/barbers')
     const grid = document.getElementById('team-grid');
     if (!barbers || !barbers.length) { grid.innerHTML = '<p style="color:#888;text-align:center">Meet our team in person!</p>'; return; }
     grid.innerHTML = barbers.map(b => `
-      <div style="text-align:center;background:#faf8f4;border-radius:14px;padding:28px 20px;border:1px solid #e4ddd0;transition:box-shadow .2s" onmouseover="this.style.boxShadow='0 8px 28px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='none'">
+      <div class="team-card-dynamic" style="text-align:center;background:#faf8f4;border-radius:14px;padding:28px 20px;border:1px solid #e4ddd0">
         <div style="width:88px;height:88px;border-radius:50%;margin:0 auto 14px;overflow:hidden;border:3px solid #c9a95a;background:#e4ddd0;display:flex;align-items:center;justify-content:center;font-size:36px">
-          ${b.photo_url ? `<img src="${b.photo_url}" alt="${b.name}" style="width:100%;height:100%;object-fit:cover">` : '✂'}
+          ${b.photo_url ? `<img src="${b.photo_url}" alt="${b.name}" style="width:100%;height:100%;object-fit:cover" loading="lazy">` : '✂'}
         </div>
         <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;color:#1a0707;margin-bottom:6px">${b.name}</div>
         <div style="font-size:12px;color:#8b1a1a;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Barber</div>
@@ -681,7 +693,7 @@ fetch('/api/barbers')
         <a href="/booking" style="display:inline-block;margin-top:16px;background:#8b1a1a;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">Book with ${b.name.split(' ')[0]} →</a>
       </div>
     `).join('');
-  }).catch(() => {});
+  }).catch(e => console.error('[team]', e));
 
 // Floating CTA on mobile
 function checkFloatCTA() {
@@ -704,7 +716,7 @@ fetch('/api/services')
     if (!services.length) { grid.innerHTML='<p style="color:#888">No services available.</p>'; return; }
     const icons = ['✂','💈','👦','🧒','🎖️','🪒','💆','⭐'];
     grid.innerHTML = services.map((s,i) => `
-      <div style="background:#fff;border-radius:14px;padding:24px 22px;border:1px solid #e4ddd0;display:flex;flex-direction:column;gap:6px;transition:box-shadow .2s;box-shadow:0 2px 8px rgba(0,0,0,.06)" onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,.06)'">
+      <div class="price-card" style="background:#fff;border-radius:14px;padding:24px 22px;border:1px solid #e4ddd0;display:flex;flex-direction:column;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
         <div style="font-size:28px;margin-bottom:6px">${icons[i%icons.length]}</div>
         <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;color:#1a0707;line-height:1.3">${s.name}</div>
         <div style="font-size:13px;color:#777;line-height:1.6;flex:1">${s.description||''}</div>
@@ -712,7 +724,7 @@ fetch('/api/services')
           <span style="font-size:24px;font-weight:800;color:#8b1a1a">$${(s.price_cents/100).toFixed(0)}</span>
           <span style="font-size:12px;color:#999;background:#f5f0e8;padding:4px 10px;border-radius:20px">${s.duration_min} min</span>
         </div>
-        <a href="/booking" style="display:block;text-align:center;background:#f5f0e8;color:#8b1a1a;padding:9px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;margin-top:8px;transition:background .15s" onmouseover="this.style.background='#8b1a1a';this.style.color='#fff'" onmouseout="this.style.background='#f5f0e8';this.style.color='#8b1a1a'">Book This Service →</a>
+        <a href="/booking" class="price-card-btn" style="display:block;text-align:center;background:#f5f0e8;color:#8b1a1a;padding:9px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;margin-top:8px">Book This Service →</a>
       </div>`).join('');
   }).catch(() => {
     document.getElementById('pricing-grid').innerHTML = `
