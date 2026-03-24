@@ -636,7 +636,7 @@ app.post('/api/bookings', async (req,res) => {
 
   const cancelToken = crypto.randomUUID();
   const r = db.prepare(
-    'INSERT INTO bookings (customer_name,customer_email,customer_phone,stylist_id,service_id,appointment_date,appointment_time,notes,cancel_token) VALUES (?,?,?,?,?,?,?,?,?)'
+    "INSERT INTO bookings (customer_name,customer_email,customer_phone,stylist_id,service_id,appointment_date,appointment_time,notes,cancel_token,status) VALUES (?,?,?,?,?,?,?,?,?,'confirmed')"
   ).run(customer_name, customer_email, customer_phone||'', stylist_id||null, service_id, appointment_date, appointment_time, notes||'', cancelToken);
 
   const booking = db.prepare(`
