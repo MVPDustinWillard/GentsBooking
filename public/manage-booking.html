@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#8B1A1A">
   <title>Manage Your Booking — Gents Barber Shop</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
     :root {
       --accent: #8B1A1A;
       --accent-light: #f9f0f0;
@@ -16,27 +18,49 @@
       --radius: 12px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: var(--text); min-height: 100vh; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f0e8; color: var(--text); min-height: 100vh; }
 
     /* Nav */
-    nav { background: #1a1a1a; padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    nav {
+      background: rgba(107, 18, 18, 0.98);
+      padding: 0 24px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,.4);
+      transition: background .3s, backdrop-filter .3s;
+    }
+    nav.scrolled {
+      background: rgba(26, 7, 7, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
     .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-    .nav-logo img { height: 36px; width: 36px; border-radius: 50%; object-fit: cover; }
-    .nav-logo span { color: #fff; font-size: 17px; font-weight: 700; letter-spacing: .5px; }
-    .nav-back { color: #aaa; text-decoration: none; font-size: 13px; }
-    .nav-back:hover { color: #fff; }
+    .nav-logo img { height: 40px; width: 40px; border-radius: 6px; object-fit: cover; }
+    .nav-logo span { color: #fff; font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600; letter-spacing: .5px; }
+    .nav-back { color: #c9a95a; text-decoration: none; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; transition: color .15s; }
+    .nav-back:hover { color: #e8c97a; }
 
     /* Hero */
-    .hero { background: linear-gradient(135deg, #1a1a1a 0%, #2d1111 100%); padding: 40px 24px 36px; text-align: center; border-bottom: 3px solid var(--gold); }
-    .hero h1 { color: #fff; font-size: 26px; font-weight: 800; margin-bottom: 6px; }
-    .hero p { color: #aaa; font-size: 14px; }
+    .hero {
+      background: linear-gradient(135deg, #1a0707 0%, #2d1111 100%);
+      padding: 48px 24px 44px; text-align: center;
+      border-bottom: 3px solid var(--gold);
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, rgba(201,169,90,.06) 0%, transparent 70%);
+    }
+    .hero h1 { font-family: 'Playfair Display', Georgia, serif; color: #fff; font-size: clamp(24px,4vw,36px); font-weight: 700; margin-bottom: 8px; position: relative; }
+    .hero p { font-family: 'Inter', sans-serif; color: #c8a888; font-size: 14px; font-weight: 300; position: relative; }
 
     /* Card */
-    .container { max-width: 520px; margin: 32px auto; padding: 0 16px 48px; }
-    .card { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,.07); }
-    .card-header { background: var(--accent); color: #fff; padding: 18px 24px; }
-    .card-header h2 { font-size: 17px; font-weight: 700; }
-    .card-header p { font-size: 12px; opacity: .8; margin-top: 4px; }
+    .container { max-width: 520px; margin: 36px auto; padding: 0 16px 56px; }
+    .card { background: #fff; border-radius: var(--radius); border: 1px solid #e4ddd0; border-top: 3px solid var(--gold); overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.09); }
+    .card-header { background: linear-gradient(135deg, #1a0707, #2d1111); color: #fff; padding: 20px 24px; }
+    .card-header h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 19px; font-weight: 700; }
+    .card-header p { font-family: 'Inter', sans-serif; font-size: 12px; opacity: .7; margin-top: 5px; font-weight: 400; }
     .card-body { padding: 24px; }
 
     /* Detail table */
@@ -84,9 +108,9 @@
 </head>
 <body>
 
-<nav>
+<nav id="manage-nav">
   <a class="nav-logo" href="/">
-    <img src="/images/gents/logo.png" alt="Gents">
+    <img src="/images/gents/hero.jpg" alt="Gents">
     <span>Gents Barbershop</span>
   </a>
   <a class="nav-back" href="/booking">Book Another Appointment &rarr;</a>
@@ -247,6 +271,18 @@
   }
 
   loadBooking();
+
+  // Frosted glass nav on scroll
+  (function() {
+    var nav = document.getElementById('manage-nav');
+    window.addEventListener('scroll', function() {
+      if (window.scrollY > 40) {
+        nav.classList.add('scrolled');
+      } else {
+        nav.classList.remove('scrolled');
+      }
+    }, { passive: true });
+  })();
 </script>
 </body>
 </html>

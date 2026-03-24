@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#8B1A1A">
   <title>Book an Appointment — Gents Barbershop</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --maroon: #6b1212;
@@ -25,18 +27,25 @@
 
     /* ── NAV ── */
     nav {
-      background: var(--maroon);
+      background: rgba(107, 18, 18, 0.98);
       position: sticky; top: 0; z-index: 200;
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 40px; height: 72px;
       box-shadow: 0 2px 12px rgba(0,0,0,.4);
+      transition: background .3s, backdrop-filter .3s;
+    }
+    nav.scrolled {
+      background: rgba(26, 7, 7, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 2px 24px rgba(0,0,0,.6);
     }
     .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
     .nav-logo-img { height: 52px; width: auto; border-radius: 6px; display: block; }
     .nav-links { display: flex; align-items: center; gap: 8px; }
     .nav-links a {
-      color: #f0e0d0; font-size: 13px; font-weight: 600; text-decoration: none;
-      padding: 7px 16px; border-radius: 8px; transition: background .15s;
+      color: #f0e0d0; font-size: 13px; font-weight: 500; text-decoration: none;
+      padding: 7px 16px; border-radius: 8px; transition: background .15s; letter-spacing: .3px;
     }
     .nav-links a:hover { background: rgba(255,255,255,.12); color: #fff; }
     .nav-home { border: 1px solid rgba(255,255,255,.25) !important; }
@@ -82,8 +91,8 @@
     .booking-hero-inner { position: relative; z-index: 1; }
     .booking-hero-logo { height: 54px; width: auto; border-radius: 8px; margin-bottom: 14px; box-shadow: 0 2px 16px rgba(0,0,0,.5); }
     .booking-hero h1 {
-      font-family: Georgia, serif;
-      font-size: clamp(22px, 4vw, 36px); font-weight: 700; color: #fff;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(24px, 4vw, 40px); font-weight: 700; color: #fff;
       margin-bottom: 6px; text-shadow: 0 2px 8px rgba(0,0,0,.5);
     }
     .booking-hero h1 span { color: var(--gold); }
@@ -850,6 +859,18 @@ function toggleMenu() {
   document.getElementById('nav-burger').classList.toggle('open');
   document.getElementById('nav-links').classList.toggle('open');
 }
+
+// Frosted glass nav on scroll
+(function() {
+  var nav = document.querySelector('nav');
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 60) {
+      nav.classList.add('scrolled');
+    } else {
+      nav.classList.remove('scrolled');
+    }
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>

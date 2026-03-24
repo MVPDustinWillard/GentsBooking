@@ -15,35 +15,47 @@
   <link rel="canonical" href="https://gentsbarbershop.com/">
   <title>Gents Barbershop — Hampton, NH</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap');
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Georgia, serif; color: #333; background: #f5f0e8; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #333; background: #f5f0e8; }
 
     /* ── NAV ── */
     nav {
-      background: #6b1212;
+      background: rgba(107, 18, 18, 0.98);
       position: sticky; top: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 40px; height: 72px;
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
+      transition: background .3s, backdrop-filter .3s, box-shadow .3s;
+    }
+    nav.scrolled {
+      background: rgba(26, 7, 7, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 2px 24px rgba(0,0,0,.6);
     }
     .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
     .nav-logo-img {
       height: 56px; width: auto; border-radius: 6px;
       display: block; object-fit: cover;
     }
-    .nav-logo-sub { font-size: 10px; color: #e0c080; letter-spacing: 1.5px; text-transform: uppercase; }
+    .nav-logo-sub { font-size: 10px; color: #e0c080; letter-spacing: 2px; text-transform: uppercase; font-family: 'Inter', sans-serif; font-weight: 500; }
     .nav-links { display: flex; align-items: center; gap: 6px; }
     .nav-links a {
-      color: #f0e0d0; font-size: 13px; font-weight: 600; text-decoration: none;
-      padding: 6px 14px; border-radius: 6px; letter-spacing: .3px; transition: background .15s;
+      color: #f0e0d0; font-size: 13px; font-weight: 500; text-decoration: none;
+      padding: 6px 14px; border-radius: 6px; letter-spacing: .4px; transition: background .15s, color .15s;
+      font-family: 'Inter', sans-serif;
     }
     .nav-links a:hover { background: rgba(255,255,255,.12); color: #fff; }
     .nav-book {
-      background: #c9a95a !important; color: #3a0a0a !important;
-      border-radius: 8px !important; font-weight: 800 !important;
+      background: linear-gradient(135deg, #c9a95a, #e8c97a) !important;
+      color: #3a0a0a !important;
+      border-radius: 8px !important; font-weight: 700 !important;
+      box-shadow: 0 2px 10px rgba(201,169,90,.3);
     }
-    .nav-book:hover { background: #b8963e !important; }
+    .nav-book:hover { opacity: .9; transform: translateY(-1px); }
     .nav-staff { color: #c9a95a !important; font-size: 12px !important; }
     /* ── Burger ── */
     .nav-burger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 4px; }
@@ -55,163 +67,278 @@
     /* ── HERO ── */
     .hero {
       position: relative; overflow: hidden;
-      min-height: 580px; display: flex; align-items: center; justify-content: center;
+      min-height: 680px; display: flex; align-items: center; justify-content: center;
       background-color: #1c0707;
     }
     .hero-bg {
       position: absolute; inset: 0;
       background: url('/images/gents/thumb-1.jpg') center center / cover no-repeat;
-      filter: brightness(.45);
+      filter: brightness(.38);
+      transform: scale(1.04);
+      transition: transform 8s ease;
     }
     #hero-bg { background-image: url('/images/gents/thumb-1.jpg'); }
     .hero::before {
       content: '';
-      position: absolute; left: 0; top: 0; bottom: 0; width: 6px; z-index: 1;
-      background: repeating-linear-gradient(180deg, #c9a95a 0 20px, #fff 20px 40px, #8b1a1a 40px 60px);
+      position: absolute; left: 0; top: 0; bottom: 0; width: 5px; z-index: 1;
+      background: linear-gradient(180deg, #c9a95a 0%, #8b1a1a 50%, #c9a95a 100%);
     }
-    .hero-content { position: relative; z-index: 2; text-align: center; color: #fff; padding: 60px 24px; max-width: 720px; }
+    .hero::after {
+      content: '';
+      position: absolute; inset: 0; z-index: 1;
+      background: radial-gradient(ellipse at center bottom, rgba(139,26,26,.18) 0%, transparent 70%);
+    }
+    .hero-content { position: relative; z-index: 2; text-align: center; color: #fff; padding: 80px 24px; max-width: 800px; }
+    .hero-est-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: rgba(201,169,90,.12); border: 1px solid rgba(201,169,90,.4);
+      color: #c9a95a; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+      letter-spacing: 3px; text-transform: uppercase; padding: 7px 18px; border-radius: 30px;
+      margin-bottom: 28px;
+    }
+    .hero-est-badge::before, .hero-est-badge::after { content: '◆'; font-size: 7px; opacity: .7; }
     .hero-banner-img {
       height: 80px; width: auto; border-radius: 10px; margin-bottom: 24px;
       box-shadow: 0 4px 24px rgba(0,0,0,.6);
     }
     .hero-title {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: clamp(28px, 4.5vw, 50px); font-weight: 700; line-height: 1.15;
-      margin-bottom: 18px; text-shadow: 0 2px 12px rgba(0,0,0,.6);
+      font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+      font-size: clamp(36px, 5.5vw, 64px); font-weight: 900; line-height: 1.1;
+      margin-bottom: 24px; text-shadow: 0 2px 24px rgba(0,0,0,.5);
+      letter-spacing: -0.5px;
     }
-    .hero-title span { color: #c9a95a; }
+    .hero-title span {
+      color: #c9a95a;
+      position: relative; display: inline-block;
+    }
+    .hero-title span::after {
+      content: '';
+      position: absolute; bottom: -4px; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, #c9a95a, transparent);
+      animation: underline-pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes underline-pulse {
+      0%, 100% { opacity: .4; transform: scaleX(.6); }
+      50% { opacity: 1; transform: scaleX(1); }
+    }
     .hero-sub {
-      font-size: 16px; line-height: 1.75; color: #e8d8c8; margin-bottom: 36px; max-width: 540px; margin-inline: auto;
+      font-family: 'Inter', sans-serif;
+      font-size: 17px; line-height: 1.8; color: #dfd0c0; margin-bottom: 44px;
+      max-width: 580px; margin-inline: auto; font-weight: 300;
     }
+    .hero-cta-wrap { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
     .hero-cta {
-      display: inline-block; background: #c9a95a; color: #3a0a0a;
-      padding: 16px 44px; border-radius: 10px; font-size: 16px; font-weight: 800;
-      text-decoration: none; letter-spacing: .5px;
-      transition: background .2s, transform .15s; box-shadow: 0 4px 20px rgba(0,0,0,.4);
+      display: inline-block;
+      background: linear-gradient(135deg, #c9a95a, #e8c97a);
+      color: #3a0a0a;
+      padding: 17px 48px; border-radius: 10px; font-size: 15px; font-weight: 700;
+      text-decoration: none; letter-spacing: .6px; font-family: 'Inter', sans-serif;
+      transition: transform .2s, box-shadow .2s;
+      box-shadow: 0 4px 24px rgba(201,169,90,.4);
+      position: relative; overflow: hidden;
     }
-    .hero-cta:hover { background: #b8963e; transform: translateY(-2px); }
+    .hero-cta::before {
+      content: '';
+      position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+      transform: skewX(-20deg);
+      transition: left .5s ease;
+    }
+    .hero-cta:hover::before { left: 160%; }
+    .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(201,169,90,.5); }
+    .hero-cta:active { transform: translateY(0) scale(.98); }
+    .hero-cta-secondary {
+      display: inline-block; color: #c9a95a; font-size: 14px; font-weight: 600;
+      text-decoration: none; letter-spacing: .4px; font-family: 'Inter', sans-serif;
+      padding: 17px 24px; border-bottom: 1px solid rgba(201,169,90,.4);
+      transition: color .2s, border-color .2s;
+    }
+    .hero-cta-secondary:hover { color: #e8c97a; border-color: #c9a95a; }
+
+    /* ── GOLD DIVIDER ── */
+    .gold-divider {
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      padding: 0 24px;
+    }
+    .gold-divider::before, .gold-divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, transparent, #c9a95a, transparent);
+      max-width: 360px;
+    }
+    .gold-divider-diamond { color: #c9a95a; font-size: 12px; letter-spacing: 8px; }
 
     /* ── SECTION WRAPPER ── */
-    section { padding: 72px 24px; }
+    section { padding: 88px 24px; }
     .section-inner { max-width: 1100px; margin: 0 auto; }
-    .section-label { font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: #8b1a1a; font-weight: 700; margin-bottom: 8px; }
-    .section-title { font-family: Georgia, serif; font-size: clamp(26px, 3.5vw, 38px); font-weight: 700; color: #1a0707; margin-bottom: 14px; }
-    .section-sub { font-size: 15px; line-height: 1.7; color: #666; max-width: 560px; margin-bottom: 48px; }
-    .divider { width: 48px; height: 3px; background: #c9a95a; border-radius: 2px; margin-bottom: 32px; }
+    .section-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+      color: #8b1a1a; font-weight: 700; margin-bottom: 10px;
+    }
+    .section-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(28px, 3.8vw, 44px); font-weight: 700; color: #1a0707;
+      margin-bottom: 16px; line-height: 1.2;
+    }
+    .section-sub {
+      font-family: 'Inter', sans-serif;
+      font-size: 16px; line-height: 1.75; color: #666;
+      max-width: 560px; margin-bottom: 52px; font-weight: 300;
+    }
+    .divider { width: 48px; height: 3px; background: linear-gradient(90deg, #c9a95a, #e8c97a); border-radius: 2px; margin-bottom: 36px; }
+
+    /* ── FADE-UP ANIMATION ── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity .65s ease, transform .65s ease;
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .fade-up-delay-1 { transition-delay: .1s; }
+    .fade-up-delay-2 { transition-delay: .2s; }
+    .fade-up-delay-3 { transition-delay: .3s; }
+    .fade-up-delay-4 { transition-delay: .4s; }
 
     /* ── SERVICES ── */
     #services { background: #fff; }
-    .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px; }
+    .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; }
     .service-card {
-      border-radius: 14px; overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,.08); transition: transform .2s, box-shadow .2s;
-      background: #faf8f4;
+      border-radius: 16px; overflow: hidden;
+      background: #1a0707;
+      border-top: 3px solid #c9a95a;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      transition: transform .25s, box-shadow .25s;
     }
-    .service-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,.14); }
+    .service-card:hover { transform: translateY(-6px); box-shadow: 0 16px 48px rgba(0,0,0,.28); }
     .service-card-img {
       height: 300px; overflow: hidden; position: relative;
     }
     .service-card-img img {
       width: 100%; height: 100%; object-fit: cover; object-position: center 35%;
-      transition: transform .4s;
+      transition: transform .5s;
+      filter: brightness(.75);
     }
-    .service-card:hover .service-card-img img { transform: scale(1.05); }
+    .service-card:hover .service-card-img img { transform: scale(1.06); filter: brightness(.85); }
     .service-card-label {
       position: absolute; bottom: 0; left: 0; right: 0;
-      background: linear-gradient(transparent, rgba(30,5,5,.75));
-      padding: 24px 16px 12px; color: #fff; font-family: Georgia, serif;
-      font-size: 20px; font-weight: 700;
+      background: linear-gradient(transparent, rgba(26,7,7,.9));
+      padding: 32px 20px 14px; color: #fff;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 22px; font-weight: 700;
     }
-    .service-card-body { padding: 18px 22px 24px; }
-    .service-card-desc { font-size: 14px; color: #666; line-height: 1.65; margin-bottom: 16px; }
+    .service-card-body { padding: 22px 24px 28px; }
+    .service-card-desc { font-family: 'Inter', sans-serif; font-size: 14px; color: #c8b8a8; line-height: 1.7; margin-bottom: 18px; font-weight: 300; }
     .service-card-link {
-      font-size: 13px; font-weight: 700; color: #8b1a1a; text-decoration: none; letter-spacing: .3px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px; font-weight: 700; color: #c9a95a; text-decoration: none; letter-spacing: .5px;
+      transition: color .2s;
     }
-    .service-card-link:hover { color: #6b1212; text-decoration: underline; }
+    .service-card-link:hover { color: #e8c97a; }
 
     /* ── GALLERY ── */
     #gallery { background: #1a0707; padding: 0; }
-    .gallery-header { padding: 56px 24px 32px; text-align: center; }
+    .gallery-header { padding: 72px 24px 40px; text-align: center; }
     .gallery-header .section-label { color: #c9a95a; }
     .gallery-header .section-title { color: #fff; margin-bottom: 0; }
     .gallery-strip {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: 1.4fr 1fr 1fr 1.4fr;
+      grid-template-rows: auto auto;
+      gap: 4px;
     }
     .gallery-strip a {
       display: block; overflow: hidden; position: relative;
-      aspect-ratio: 3/4;
     }
+    .gallery-strip a:nth-child(1) { aspect-ratio: 3/4; }
+    .gallery-strip a:nth-child(2) { aspect-ratio: 4/5; }
+    .gallery-strip a:nth-child(3) { aspect-ratio: 4/5; }
+    .gallery-strip a:nth-child(4) { aspect-ratio: 3/4; }
+    .gallery-strip a::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(26,7,7,.5) 0%, transparent 50%);
+      opacity: 0;
+      transition: opacity .4s;
+    }
+    .gallery-strip a:hover::after { opacity: 1; }
     .gallery-strip a img {
       width: 100%; height: 100%; object-fit: cover; object-position: center top;
-      transition: transform .5s, filter .5s;
-      filter: brightness(.85);
+      transition: transform .6s, filter .4s;
+      filter: brightness(.82) saturate(.9);
     }
-    .gallery-strip a:hover img { transform: scale(1.07); filter: brightness(1); }
+    .gallery-strip a:hover img { transform: scale(1.08); filter: brightness(1) saturate(1.1); }
     @media (max-width: 600px) {
       .gallery-strip { grid-template-columns: repeat(2, 1fr); }
+      .gallery-strip a { aspect-ratio: 1/1 !important; }
     }
 
     /* ── HOURS ── */
     #hours { background: #f5f0e8; }
-    .hours-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+    .hours-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
     @media (max-width: 700px) { .hours-layout { grid-template-columns: 1fr; } }
     .hours-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; max-width: 380px; }
     .hours-day, .hours-time {
-      padding: 10px 0; font-size: 15px; border-bottom: 1px solid #e4ddd0;
+      padding: 12px 0; font-size: 15px; border-bottom: 1px solid #e4ddd0;
+      font-family: 'Inter', sans-serif;
     }
-    .hours-day { font-weight: 700; color: #1a0707; }
-    .hours-time { color: #555; text-align: right; padding-right: 8px; }
-    .hours-closed { color: #8b1a1a; font-weight: 600; }
+    .hours-day { font-weight: 600; color: #1a0707; }
+    .hours-time { color: #555; text-align: right; padding-right: 8px; font-weight: 400; }
+    .hours-closed { color: #8b1a1a; font-weight: 700; }
     .hours-team-img {
-      width: 100%; border-radius: 14px; object-fit: cover;
-      box-shadow: 0 6px 28px rgba(0,0,0,.15);
+      width: 100%; border-radius: 16px; object-fit: cover;
+      box-shadow: 0 8px 40px rgba(0,0,0,.18);
     }
     .policy-box {
-      margin-top: 28px; background: #fff; border-left: 4px solid #c9a95a;
-      padding: 18px 22px; border-radius: 0 10px 10px 0; max-width: 560px;
-      font-size: 14px; line-height: 1.7; color: #555;
+      margin-top: 32px; background: #fff; border-left: 4px solid #c9a95a;
+      padding: 20px 24px; border-radius: 0 12px 12px 0; max-width: 560px;
+      font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.75; color: #555;
     }
     .policy-box strong { color: #1a0707; }
 
     /* ── WHY US ── */
-    #why { background: #6b1212; }
+    #why { background: #1a0707; }
     #why .section-label { color: #c9a95a; }
     #why .section-title { color: #fff; }
-    #why .section-sub   { color: #e8d0d0; }
-    .why-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+    #why .section-sub   { color: #c8a888; }
+    .why-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
     .why-card {
-      background: rgba(255,255,255,.08); border-radius: 14px; padding: 28px 22px;
-      text-align: center; border: 1px solid rgba(255,255,255,.12);
-      transition: background .2s;
+      background: rgba(255,255,255,.05); border-radius: 16px; padding: 32px 24px;
+      text-align: center; border: 1px solid rgba(201,169,90,.18);
+      transition: background .25s, transform .25s, box-shadow .25s;
     }
-    .why-card:hover { background: rgba(255,255,255,.13); }
-    .why-icon { font-size: 40px; margin-bottom: 12px; display: block; }
-    .why-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 8px; }
-    .why-desc  { font-size: 13px; color: #e8d0d0; line-height: 1.6; }
+    .why-card:hover {
+      background: rgba(201,169,90,.08); transform: translateY(-4px);
+      box-shadow: 0 12px 36px rgba(0,0,0,.3);
+    }
+    .why-icon { font-size: 44px; margin-bottom: 16px; display: block; }
+    .why-title { font-family: 'Playfair Display', Georgia, serif; font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .why-desc  { font-family: 'Inter', sans-serif; font-size: 14px; color: #c8a888; line-height: 1.65; font-weight: 300; }
 
     /* ── CONTACT ── */
     #contact { background: #fff; }
-    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
     @media (max-width: 680px) { .contact-grid { grid-template-columns: 1fr; } }
-    .contact-item { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 22px; }
+    .contact-item { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 24px; }
     .contact-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
-    .contact-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 4px; }
-    .contact-value { font-size: 15px; color: #1a0707; font-weight: 600; }
+    .contact-label { font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #999; margin-bottom: 5px; }
+    .contact-value { font-family: 'Inter', sans-serif; font-size: 15px; color: #1a0707; font-weight: 600; }
     .contact-value a { color: #8b1a1a; text-decoration: none; }
     .contact-value a:hover { text-decoration: underline; }
     .map-box {
-      background: #f5f0e8; border-radius: 14px; padding: 28px;
-      border: 1px solid #e4ddd0; text-align: center;
+      background: #f5f0e8; border-radius: 16px; padding: 28px;
+      border: 1px solid #e4ddd0;
     }
-    .map-box-title { font-family: Georgia, serif; font-size: 18px; font-weight: 700; color: #1a0707; margin-bottom: 8px; }
-    .map-box-addr  { font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 20px; }
+    .map-box-title { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 700; color: #1a0707; margin-bottom: 8px; }
+    .map-box-addr  { font-family: 'Inter', sans-serif; font-size: 14px; color: #666; line-height: 1.7; margin-bottom: 20px; font-weight: 400; }
     .map-btn {
-      display: inline-block; background: #8b1a1a; color: #fff; padding: 10px 22px;
-      border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none;
-      transition: background .15s;
+      display: inline-block; background: #8b1a1a; color: #fff; padding: 11px 24px;
+      border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700;
+      text-decoration: none; transition: background .15s, transform .15s; letter-spacing: .3px;
     }
-    .map-btn:hover { background: #6b1212; }
+    .map-btn:hover { background: #6b1212; transform: translateY(-1px); }
     @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
     .price-skeleton {
       height: 220px; border-radius: 14px;
@@ -223,53 +350,125 @@
       display: inline-flex; align-items: center; gap: 8px;
       background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
       color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none;
-      font-size: 14px; font-weight: 700; transition: opacity .15s; margin-top: 8px;
+      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700;
+      transition: opacity .15s, transform .15s; margin-top: 8px;
     }
-    .instagram-link:hover { opacity: .88; }
+    .instagram-link:hover { opacity: .88; transform: translateY(-1px); }
 
-    /* ── Dynamic hover classes (CSS replaces inline onmouseover/onmouseout) ── */
-    .cta-gold-btn { background: #c9a95a; }
-    .cta-gold-btn:hover { background: #b8963e !important; }
+    /* ── CTA BUTTON STYLES ── */
+    .cta-gold-btn {
+      background: linear-gradient(135deg, #c9a95a, #e8c97a);
+      position: relative; overflow: hidden;
+    }
+    .cta-gold-btn::before {
+      content: '';
+      position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+      transform: skewX(-20deg);
+      transition: left .5s ease;
+    }
+    .cta-gold-btn:hover::before { left: 160%; }
+    .cta-gold-btn:hover { background: linear-gradient(135deg, #d4b567, #f0d48a) !important; }
+    .cta-gold-btn:active { transform: scale(.98); }
     .cta-dark-btn { background: #8b1a1a; }
     .cta-dark-btn:hover { background: #6b1212 !important; }
-    .team-card-dynamic { transition: box-shadow .2s; }
-    .team-card-dynamic:hover { box-shadow: 0 8px 28px rgba(0,0,0,.1); }
-    .price-card { transition: box-shadow .2s; }
-    .price-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1) !important; }
+    .team-card-dynamic { transition: box-shadow .25s, transform .25s; }
+    .team-card-dynamic:hover { box-shadow: 0 12px 40px rgba(0,0,0,.18) !important; transform: translateY(-4px); }
+    .price-card { transition: box-shadow .25s, transform .25s; }
+    .price-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.12) !important; transform: translateY(-3px); }
     .price-card-btn { transition: background .15s, color .15s; }
     .price-card-btn:hover { background: #8b1a1a !important; color: #fff !important; }
 
     /* ── FOOTER ── */
     footer {
-      background: #1a0707; color: #c8b8a8; text-align: center;
-      padding: 40px 24px; font-size: 13px; line-height: 1.8;
+      background: #0f0303;
+      color: #c8b8a8;
+      padding: 72px 24px 40px;
+      border-top: 1px solid rgba(201,169,90,.2);
     }
-    .footer-banner { height: 60px; width: auto; border-radius: 8px; margin-bottom: 16px; }
-    footer a { color: #c9a95a; text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
-    .footer-sep { margin: 0 8px; opacity: .4; }
+    .footer-inner { max-width: 1100px; margin: 0 auto; }
+    .footer-top {
+      display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 48px;
+      padding-bottom: 56px; border-bottom: 1px solid rgba(255,255,255,.07);
+      margin-bottom: 40px;
+    }
+    @media (max-width: 900px) { .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; } }
+    @media (max-width: 540px) { .footer-top { grid-template-columns: 1fr; gap: 28px; } }
+    .footer-brand-img { height: 60px; width: auto; border-radius: 8px; margin-bottom: 16px; display: block; }
+    .footer-brand-tagline { font-family: 'Inter', sans-serif; font-size: 13px; color: #9a8878; line-height: 1.7; font-weight: 300; max-width: 220px; }
+    .footer-col-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 16px;
+      letter-spacing: .5px;
+    }
+    .footer-col-title::after {
+      content: ''; display: block; width: 24px; height: 2px;
+      background: #c9a95a; margin-top: 8px;
+    }
+    .footer-links { list-style: none; }
+    .footer-links li { margin-bottom: 10px; }
+    .footer-links a {
+      font-family: 'Inter', sans-serif; font-size: 13px; color: #9a8878;
+      text-decoration: none; transition: color .15s; font-weight: 400;
+    }
+    .footer-links a:hover { color: #c9a95a; }
+    .footer-hours-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: 'Inter', sans-serif; font-size: 13px; color: #9a8878;
+      margin-bottom: 8px; font-weight: 400;
+    }
+    .footer-hours-row span:first-child { color: #c8b8a8; font-weight: 500; }
+    .footer-hours-closed { color: #8b1a1a !important; }
+    .footer-social-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'Inter', sans-serif; font-size: 13px; color: #9a8878;
+      text-decoration: none; transition: color .15s; margin-bottom: 10px; font-weight: 400;
+    }
+    .footer-social-link:hover { color: #c9a95a; }
+    .footer-bottom {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      font-family: 'Inter', sans-serif; font-size: 12px; color: #6a5a4a;
+    }
+    .footer-bottom a { color: #c9a95a; text-decoration: none; }
+    .footer-bottom a:hover { text-decoration: underline; }
 
     /* ── RESPONSIVE ── */
     @media (max-width: 700px) {
       nav { padding: 0 16px; height: 60px; }
       .nav-logo-img { height: 44px; }
-      section { padding: 52px 16px; }
+      section { padding: 60px 16px; }
       .nav-burger { display: flex; }
       .nav-links {
         display: none; flex-direction: column; align-items: stretch; gap: 4px;
         position: absolute; top: 60px; left: 0; right: 0;
-        background: #6b1212; padding: 12px 16px 16px;
+        background: rgba(26,7,7,.97); backdrop-filter: blur(12px);
+        padding: 12px 16px 16px;
         box-shadow: 0 4px 16px rgba(0,0,0,.4); z-index: 99;
       }
       .nav-links.open { display: flex; }
       .nav-links a { padding: 10px 14px; font-size: 14px; border-radius: 8px; }
+      .hero-title { font-size: clamp(32px, 7vw, 52px); }
+    }
+
+    /* ── HOW-IT-WORKS STEPS ── */
+    .step-numeral {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 52px; font-weight: 900; color: #c9a95a;
+      line-height: 1; margin-bottom: 8px;
+      text-shadow: 0 0 40px rgba(201,169,90,.3);
+    }
+    .step-line {
+      width: 1px; background: rgba(201,169,90,.25);
+      position: absolute; top: 0; left: 50%; bottom: 0;
+      display: none;
     }
   </style>
 </head>
 <body>
 
 <!-- ── NAVIGATION ── -->
-<nav style="position:relative">
+<nav id="main-nav" style="position:relative">
   <a class="nav-logo" href="/">
     <img class="nav-logo-img" src="/images/gents/hero.jpg" alt="Gents Barbershop">
     <div class="nav-logo-sub">Hampton, NH</div>
@@ -292,6 +491,7 @@
 <div class="hero">
   <div class="hero-bg" id="hero-bg"></div>
   <div class="hero-content">
+    <div class="hero-est-badge">Est. Hampton, NH</div>
     <img class="hero-banner-img" id="hero-banner-img" src="/images/gents/hero.jpg" alt="Gents Barbershop logo">
     <h1 class="hero-title" id="hero-title">Welcome to <span>Gents</span> Barbershop</h1>
     <p class="hero-sub" id="hero-subtitle">
@@ -299,50 +499,66 @@
       targeted to meet the needs of today's gentleman — in a friendly establishment for men and boys
       that consistently offers the very best in services, products and camaraderie at an affordable price.
     </p>
-    <a href="/booking" class="hero-cta">Book an Appointment</a>
+    <div class="hero-cta-wrap">
+      <a href="/booking" class="hero-cta">Book an Appointment</a>
+      <a href="#services" class="hero-cta-secondary">Explore Services</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── GOLD DIVIDER ── -->
+<div style="background:#1a0707;padding:24px 0">
+  <div class="gold-divider">
+    <span class="gold-divider-diamond">◆ ◆ ◆</span>
   </div>
 </div>
 
 <!-- ── HOW IT WORKS ── -->
-<section id="how-it-works" style="background:#1a0707;padding:60px 24px">
+<section id="how-it-works" style="background:#1a0707;padding:72px 24px">
   <div class="section-inner" style="max-width:1100px;margin:0 auto;text-align:center">
-    <div class="section-label" style="color:#c9a95a">Simple &amp; Fast</div>
-    <h2 style="font-family:Georgia,serif;font-size:clamp(24px,3vw,36px);font-weight:700;color:#fff;margin-bottom:40px">Book in 3 Easy Steps</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:32px;position:relative">
-      <div style="text-align:center;padding:0 16px">
-        <div style="width:64px;height:64px;border-radius:50%;background:#c9a95a;color:#1a0707;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;margin:0 auto 18px">1</div>
-        <img src="/images/gents/logo.png" alt="Gents" style="height:36px;width:36px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block">
-        <h3 style="font-family:Georgia,serif;font-size:17px;font-weight:700;color:#fff;margin-bottom:8px">Choose Your Service</h3>
-        <p style="font-size:14px;color:#c8a888;line-height:1.7">Pick from our full menu of haircuts, beard trims, and specialty services — all at transparent pricing.</p>
+    <div class="section-label fade-up" style="color:#c9a95a">Simple &amp; Fast</div>
+    <h2 class="fade-up" style="font-family:'Playfair Display',Georgia,serif;font-size:clamp(28px,3.5vw,42px);font-weight:700;color:#fff;margin-bottom:16px">Book in Three Steps</h2>
+    <p class="fade-up" style="font-family:'Inter',sans-serif;font-size:16px;color:#c8a888;max-width:480px;margin:0 auto 56px;line-height:1.7;font-weight:300">Reserve your seat with a barber you trust — in under two minutes.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:40px;position:relative">
+      <div class="fade-up fade-up-delay-1" style="text-align:center;padding:0 16px">
+        <div class="step-numeral">I</div>
+        <img src="/images/gents/logo.png" alt="Gents" style="height:32px;width:32px;border-radius:50%;object-fit:cover;margin:0 auto 14px;display:block;opacity:.6">
+        <h3 style="font-family:'Playfair Display',Georgia,serif;font-size:19px;font-weight:700;color:#fff;margin-bottom:10px">Choose Your Service</h3>
+        <p style="font-family:'Inter',sans-serif;font-size:14px;color:#c8a888;line-height:1.75;font-weight:300">Pick from our full menu of haircuts, beard trims, and specialty services — all at transparent pricing.</p>
       </div>
-      <div style="text-align:center;padding:0 16px">
-        <div style="width:64px;height:64px;border-radius:50%;background:#c9a95a;color:#1a0707;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;margin:0 auto 18px">2</div>
-        <div style="font-size:20px;margin-bottom:10px">📅</div>
-        <h3 style="font-family:Georgia,serif;font-size:17px;font-weight:700;color:#fff;margin-bottom:8px">Pick Your Barber &amp; Time</h3>
-        <p style="font-size:14px;color:#c8a888;line-height:1.7">Choose your favorite barber or let us match you with any available — then select a time that fits your schedule.</p>
+      <div class="fade-up fade-up-delay-2" style="text-align:center;padding:0 16px">
+        <div class="step-numeral">II</div>
+        <div style="font-size:28px;margin-bottom:14px;opacity:.7">📅</div>
+        <h3 style="font-family:'Playfair Display',Georgia,serif;font-size:19px;font-weight:700;color:#fff;margin-bottom:10px">Pick Your Barber &amp; Time</h3>
+        <p style="font-family:'Inter',sans-serif;font-size:14px;color:#c8a888;line-height:1.75;font-weight:300">Choose your favorite barber or let us match you with any available — then select a time that fits your schedule.</p>
       </div>
-      <div style="text-align:center;padding:0 16px">
-        <div style="width:64px;height:64px;border-radius:50%;background:#c9a95a;color:#1a0707;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;margin:0 auto 18px">3</div>
-        <div style="font-size:20px;margin-bottom:10px">🎉</div>
-        <h3 style="font-family:Georgia,serif;font-size:17px;font-weight:700;color:#fff;margin-bottom:8px">We'll See You There</h3>
-        <p style="font-size:14px;color:#c8a888;line-height:1.7">Get a confirmation by email and SMS. We'll send you a reminder the day before so you never miss your appointment.</p>
+      <div class="fade-up fade-up-delay-3" style="text-align:center;padding:0 16px">
+        <div class="step-numeral">III</div>
+        <div style="font-size:28px;margin-bottom:14px;opacity:.7">✓</div>
+        <h3 style="font-family:'Playfair Display',Georgia,serif;font-size:19px;font-weight:700;color:#fff;margin-bottom:10px">We'll See You There</h3>
+        <p style="font-family:'Inter',sans-serif;font-size:14px;color:#c8a888;line-height:1.75;font-weight:300">Get a confirmation by email and SMS. We'll send you a reminder the day before so you never miss your appointment.</p>
       </div>
     </div>
-    <div style="margin-top:44px">
-      <a href="/booking" class="cta-gold-btn" style="display:inline-block;color:#1a0707;padding:15px 42px;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none;letter-spacing:.4px;transition:background .2s">Book Your Appointment →</a>
+    <div class="fade-up" style="margin-top:52px">
+      <a href="/booking" class="cta-gold-btn" style="display:inline-block;color:#1a0707;padding:16px 48px;border-radius:10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:.5px;transition:transform .2s,box-shadow .2s;box-shadow:0 4px 24px rgba(201,169,90,.35)">Book Your Appointment →</a>
     </div>
   </div>
 </section>
 
+<!-- ── GOLD DIVIDER ── -->
+<div style="background:#fff;padding:0">
+  <div style="height:4px;background:linear-gradient(90deg,#8b1a1a,#c9a95a,#8b1a1a)"></div>
+</div>
+
 <!-- ── SERVICES ── -->
 <section id="services">
   <div class="section-inner">
-    <div class="section-label">Our Services</div>
-    <h2 class="section-title">Built for the Modern Gentleman</h2>
-    <div class="divider"></div>
-    <p class="section-sub">We provide all styles of haircuts and beard trims to fit your grooming needs — from classic to modern and everything in between.</p>
+    <div class="section-label fade-up">Our Services</div>
+    <h2 class="section-title fade-up">Built for the Modern Gentleman</h2>
+    <div class="divider fade-up"></div>
+    <p class="section-sub fade-up">We provide all styles of haircuts and beard trims to fit your grooming needs — from classic to modern and everything in between.</p>
     <div class="services-grid">
-      <div class="service-card">
+      <div class="service-card fade-up fade-up-delay-1">
         <div class="service-card-img">
           <img id="svc-card-1-img" src="/images/gents/staff-2.jpg" alt="Hair Cuts" style="object-position: center 10%" loading="lazy">
           <div class="service-card-label" id="svc-card-1-title">Hair Cuts</div>
@@ -352,7 +568,7 @@
           <a href="/booking" class="service-card-link">Book Now →</a>
         </div>
       </div>
-      <div class="service-card">
+      <div class="service-card fade-up fade-up-delay-2">
         <div class="service-card-img">
           <img id="svc-card-2-img" src="/images/gents/staff-3.jpg" alt="Beard Trims" style="object-position: center 60%" loading="lazy">
           <div class="service-card-label" id="svc-card-2-title">Beard Trims</div>
@@ -362,7 +578,7 @@
           <a href="/booking" class="service-card-link">Book Now →</a>
         </div>
       </div>
-      <div class="service-card">
+      <div class="service-card fade-up fade-up-delay-3">
         <div class="service-card-img">
           <img id="svc-card-3-img" src="/images/gents/staff-5.jpg" alt="Styling Services" style="object-position: center 35%" loading="lazy">
           <div class="service-card-label" id="svc-card-3-title">Styling Services</div>
@@ -376,28 +592,35 @@
   </div>
 </section>
 
+<!-- ── GOLD DIVIDER ── -->
+<div style="background:#f5f0e8;padding:40px 24px">
+  <div class="gold-divider">
+    <span class="gold-divider-diamond">◆</span>
+  </div>
+</div>
+
 <!-- ── PRICING ── -->
-<section id="pricing" style="background:#f5f0e8">
+<section id="pricing" style="background:#f5f0e8;padding-top:0">
   <div class="section-inner">
-    <div class="section-label">Menu &amp; Pricing</div>
-    <h2 class="section-title">Simple, Transparent Pricing</h2>
-    <div class="divider"></div>
-    <p class="section-sub">No surprises. Every cut, every time. Pricing below reflects our full service menu.</p>
+    <div class="section-label fade-up">Menu &amp; Pricing</div>
+    <h2 class="section-title fade-up">Simple, Transparent Pricing</h2>
+    <div class="divider fade-up"></div>
+    <p class="section-sub fade-up">No surprises. Every cut, every time. Pricing below reflects our full service menu.</p>
     <div id="pricing-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
       <div class="price-skeleton"></div>
       <div class="price-skeleton"></div>
       <div class="price-skeleton"></div>
       <div class="price-skeleton"></div>
     </div>
-    <div style="text-align:center;margin-top:40px">
-      <a href="/booking" class="cta-dark-btn" style="display:inline-block;color:#fff;padding:14px 40px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;transition:background .15s">Book an Appointment →</a>
+    <div class="fade-up" style="text-align:center;margin-top:44px">
+      <a href="/booking" class="cta-dark-btn" style="display:inline-block;color:#fff;padding:15px 44px;border-radius:10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;text-decoration:none;transition:background .15s,transform .15s;letter-spacing:.4px">Book an Appointment →</a>
     </div>
   </div>
 </section>
 
 <!-- ── GALLERY ── -->
 <section id="gallery">
-  <div class="gallery-header">
+  <div class="gallery-header fade-up">
     <div class="section-label">Our Work</div>
     <h2 class="section-title">The Gents Experience</h2>
   </div>
@@ -420,11 +643,11 @@
 <!-- ── HOURS ── -->
 <section id="hours">
   <div class="section-inner">
-    <div class="section-label">Visit Us</div>
-    <h2 class="section-title">Hours &amp; Location</h2>
-    <div class="divider"></div>
+    <div class="section-label fade-up">Visit Us</div>
+    <h2 class="section-title fade-up">Hours &amp; Location</h2>
+    <div class="divider fade-up"></div>
     <div class="hours-layout">
-      <div>
+      <div class="fade-up">
         <div class="hours-grid">
           <div class="hours-day">Monday</div>    <div class="hours-time" id="hours-mon">10am – 6pm</div>
           <div class="hours-day">Tuesday</div>   <div class="hours-time" id="hours-tue">10am – 6pm</div>
@@ -441,7 +664,7 @@
           We thank you for your understanding. <em>— The Gents Team</em></span>
         </div>
       </div>
-      <div>
+      <div class="fade-up fade-up-delay-2">
         <img class="hours-team-img" src="/images/gents/thumb-3.jpg" alt="The Gents Barbershop team" loading="lazy">
       </div>
     </div>
@@ -451,26 +674,26 @@
 <!-- ── WHY US ── -->
 <section id="why">
   <div class="section-inner">
-    <div class="section-label">Why Choose Us</div>
-    <h2 class="section-title">The Gents Difference</h2>
-    <div class="divider" style="background:#c9a95a"></div>
+    <div class="section-label fade-up">Why Choose Us</div>
+    <h2 class="section-title fade-up">The Gents Difference</h2>
+    <div class="divider fade-up" style="background:linear-gradient(90deg,#c9a95a,#e8c97a)"></div>
     <div class="why-grid">
-      <div class="why-card">
+      <div class="why-card fade-up fade-up-delay-1">
         <span class="why-icon">🎖️</span>
         <div class="why-title">Discounts</div>
         <div class="why-desc">Special rates for seniors and first responders. We're proud to give back to our community.</div>
       </div>
-      <div class="why-card">
+      <div class="why-card fade-up fade-up-delay-2">
         <span class="why-icon">⭐</span>
         <div class="why-title">Quality</div>
         <div class="why-desc">Top-quality products and techniques for the best experience every single visit.</div>
       </div>
-      <div class="why-card">
+      <div class="why-card fade-up fade-up-delay-3">
         <span class="why-icon">💪</span>
         <div class="why-title">Experienced</div>
         <div class="why-desc">Skilled barbers dedicated to your satisfaction — from classic cuts to the latest styles.</div>
       </div>
-      <div class="why-card">
+      <div class="why-card fade-up fade-up-delay-4">
         <span class="why-icon">🤝</span>
         <div class="why-title">Friendly</div>
         <div class="why-desc">A welcoming atmosphere for men and boys of all ages. You're always among friends here.</div>
@@ -480,47 +703,47 @@
 </section>
 
 <!-- ── TEAM ── -->
-<section id="team" style="background:#fff;padding:72px 24px">
+<section id="team" style="background:#0f0303;padding:88px 24px">
   <div class="section-inner" style="max-width:1100px;margin:0 auto">
-    <div class="section-label">The Crew</div>
-    <h2 class="section-title">Meet Your Barbers</h2>
-    <div class="divider"></div>
-    <p class="section-sub">Skilled professionals dedicated to making you look and feel your best — every single visit.</p>
-    <div id="team-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px">
-      <div style="text-align:center;color:#888;padding:32px;font-size:14px">Loading team…</div>
+    <div class="section-label fade-up" style="color:#c9a95a">The Crew</div>
+    <h2 class="section-title fade-up" style="color:#fff">Meet Your Barbers</h2>
+    <div class="divider fade-up" style="background:linear-gradient(90deg,#c9a95a,#e8c97a)"></div>
+    <p class="section-sub fade-up" style="color:#c8a888">Skilled professionals dedicated to making you look and feel your best — every single visit.</p>
+    <div id="team-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:28px">
+      <div style="text-align:center;color:#666;padding:32px;font-size:14px">Loading team…</div>
     </div>
   </div>
 </section>
 
 <!-- ── TESTIMONIALS ── -->
-<section id="reviews" style="background:#f5f0e8;padding:72px 24px">
+<section id="reviews" style="background:#f5f0e8;padding:88px 24px">
   <div class="section-inner" style="max-width:1100px;margin:0 auto">
-    <div class="section-label">Happy Clients</div>
-    <h2 class="section-title">What Our Customers Say</h2>
-    <div class="divider"></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:8px">
-      <div style="background:#fff;border-radius:14px;padding:28px;border:1px solid #e4ddd0;box-shadow:0 2px 12px rgba(0,0,0,.06)">
-        <div style="color:#c9a95a;font-size:20px;margin-bottom:12px">★★★★★</div>
-        <p style="font-size:15px;line-height:1.75;color:#444;font-style:italic;margin-bottom:20px">"Best barbershop in Hampton by a mile. Marcus always knows exactly what I want without me having to explain it twice. The hot towel treatment is a must!"</p>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:42px;height:42px;border-radius:50%;background:#8b1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">T</div>
-          <div><div style="font-weight:700;font-size:14px;color:#1a0707">Tom R.</div><div style="font-size:12px;color:#888">Hampton, NH · Regular Client</div></div>
+    <div class="section-label fade-up">Happy Clients</div>
+    <h2 class="section-title fade-up">What Our Customers Say</h2>
+    <div class="divider fade-up"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-top:8px">
+      <div class="fade-up fade-up-delay-1" style="background:#fff;border-radius:16px;padding:32px;border:1px solid #e4ddd0;box-shadow:0 2px 16px rgba(0,0,0,.06);transition:transform .25s,box-shadow .25s" onmouseenter="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 40px rgba(0,0,0,.12)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div style="color:#c9a95a;font-size:18px;margin-bottom:16px;letter-spacing:2px">★★★★★</div>
+        <p style="font-family:'Inter',sans-serif;font-size:15px;line-height:1.8;color:#444;font-style:italic;margin-bottom:24px;font-weight:300">"Best barbershop in Hampton by a mile. Marcus always knows exactly what I want without me having to explain it twice. The hot towel treatment is a must!"</p>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#8b1a1a,#c9a95a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">T</div>
+          <div><div style="font-family:'Inter',sans-serif;font-weight:700;font-size:14px;color:#1a0707">Tom R.</div><div style="font-family:'Inter',sans-serif;font-size:12px;color:#999;margin-top:2px">Hampton, NH · Regular Client</div></div>
         </div>
       </div>
-      <div style="background:#fff;border-radius:14px;padding:28px;border:1px solid #e4ddd0;box-shadow:0 2px 12px rgba(0,0,0,.06)">
-        <div style="color:#c9a95a;font-size:20px;margin-bottom:12px">★★★★★</div>
-        <p style="font-size:15px;line-height:1.75;color:#444;font-style:italic;margin-bottom:20px">"I've been coming to Gents for three years. Great atmosphere, friendly staff, and my kids actually look forward to their haircuts now. That says everything."</p>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:42px;height:42px;border-radius:50%;background:#8b1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">M</div>
-          <div><div style="font-weight:700;font-size:14px;color:#1a0707">Mike S.</div><div style="font-size:12px;color:#888">Seabrook, NH · Family Client</div></div>
+      <div class="fade-up fade-up-delay-2" style="background:#fff;border-radius:16px;padding:32px;border:1px solid #e4ddd0;box-shadow:0 2px 16px rgba(0,0,0,.06);transition:transform .25s,box-shadow .25s" onmouseenter="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 40px rgba(0,0,0,.12)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div style="color:#c9a95a;font-size:18px;margin-bottom:16px;letter-spacing:2px">★★★★★</div>
+        <p style="font-family:'Inter',sans-serif;font-size:15px;line-height:1.8;color:#444;font-style:italic;margin-bottom:24px;font-weight:300">"I've been coming to Gents for three years. Great atmosphere, friendly staff, and my kids actually look forward to their haircuts now. That says everything."</p>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#8b1a1a,#c9a95a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">M</div>
+          <div><div style="font-family:'Inter',sans-serif;font-weight:700;font-size:14px;color:#1a0707">Mike S.</div><div style="font-family:'Inter',sans-serif;font-size:12px;color:#999;margin-top:2px">Seabrook, NH · Family Client</div></div>
         </div>
       </div>
-      <div style="background:#fff;border-radius:14px;padding:28px;border:1px solid #e4ddd0;box-shadow:0 2px 12px rgba(0,0,0,.06)">
-        <div style="color:#c9a95a;font-size:20px;margin-bottom:12px">★★★★★</div>
-        <p style="font-size:15px;line-height:1.75;color:#444;font-style:italic;margin-bottom:20px">"Online booking is so easy. I scheduled a Saturday slot in under two minutes from my phone. Walked in, no wait, perfect fade. This is how it should be done."</p>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:42px;height:42px;border-radius:50%;background:#8b1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">D</div>
-          <div><div style="font-weight:700;font-size:14px;color:#1a0707">Dave L.</div><div style="font-size:12px;color:#888">Hampton, NH · Online Booking Fan</div></div>
+      <div class="fade-up fade-up-delay-3" style="background:#fff;border-radius:16px;padding:32px;border:1px solid #e4ddd0;box-shadow:0 2px 16px rgba(0,0,0,.06);transition:transform .25s,box-shadow .25s" onmouseenter="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 40px rgba(0,0,0,.12)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div style="color:#c9a95a;font-size:18px;margin-bottom:16px;letter-spacing:2px">★★★★★</div>
+        <p style="font-family:'Inter',sans-serif;font-size:15px;line-height:1.8;color:#444;font-style:italic;margin-bottom:24px;font-weight:300">"Online booking is so easy. I scheduled a Saturday slot in under two minutes from my phone. Walked in, no wait, perfect fade. This is how it should be done."</p>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#8b1a1a,#c9a95a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">D</div>
+          <div><div style="font-family:'Inter',sans-serif;font-weight:700;font-size:14px;color:#1a0707">Dave L.</div><div style="font-family:'Inter',sans-serif;font-size:12px;color:#999;margin-top:2px">Hampton, NH · Online Booking Fan</div></div>
         </div>
       </div>
     </div>
@@ -530,11 +753,11 @@
 <!-- ── CONTACT ── -->
 <section id="contact">
   <div class="section-inner">
-    <div class="section-label">Get in Touch</div>
-    <h2 class="section-title">Find Us</h2>
-    <div class="divider"></div>
+    <div class="section-label fade-up">Get in Touch</div>
+    <h2 class="section-title fade-up">Find Us</h2>
+    <div class="divider fade-up"></div>
     <div class="contact-grid">
-      <div>
+      <div class="fade-up">
         <div class="contact-item">
           <span class="contact-icon">📍</span>
           <div>
@@ -568,15 +791,17 @@
           </div>
         </div>
       </div>
-      <div class="map-box">
-        <div class="map-box-title">Gents Barbershop</div>
-        <div class="map-box-addr">893 Lafayette Road<br>Hampton, New Hampshire 03842<br><br>Easy parking available. Located on Lafayette Road (Rt. 1) in Hampton.</div>
-        <iframe
-          title="Gents Barbershop location"
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2929.4!2d-70.8378!3d42.9365!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89e2bfb6b5b5b5b5%3A0x1!2s893+Lafayette+Rd%2C+Hampton%2C+NH+03842!5e0!3m2!1sen!2sus!4v1710000000000!5m2!1sen!2sus"
-          width="100%" height="220" style="border:0;border-radius:10px;margin-bottom:16px;display:block" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade">
-        </iframe>
-        <a class="map-btn" href="https://maps.google.com/?q=893+Lafayette+Road,+Hampton,+NH+03842" target="_blank" rel="noopener">Get Directions</a>
+      <div class="fade-up fade-up-delay-2">
+        <div class="map-box">
+          <div class="map-box-title">Gents Barbershop</div>
+          <div class="map-box-addr">893 Lafayette Road<br>Hampton, New Hampshire 03842<br><br>Easy parking available. Located on Lafayette Road (Rt. 1) in Hampton.</div>
+          <iframe
+            title="Gents Barbershop location"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2929.4!2d-70.8378!3d42.9365!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89e2bfb6b5b5b5b5%3A0x1!2s893+Lafayette+Rd%2C+Hampton%2C+NH+03842!5e0!3m2!1sen!2sus!4v1710000000000!5m2!1sen!2sus"
+            width="100%" height="220" style="border:0;border-radius:10px;margin-bottom:16px;display:block" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+          </iframe>
+          <a class="map-btn" href="https://maps.google.com/?q=893+Lafayette+Road,+Hampton,+NH+03842" target="_blank" rel="noopener">Get Directions</a>
+        </div>
       </div>
     </div>
   </div>
@@ -584,25 +809,57 @@
 
 <!-- ── FOOTER ── -->
 <footer>
-  <img class="footer-banner" src="/images/gents/hero.jpg" alt="Gents Barbershop" loading="lazy">
-  <div>893 Lafayette Road, Hampton, New Hampshire 03842</div>
-  <div>
-    <a href="tel:6036018615">603-601-8615</a>
-    <span class="footer-sep">·</span>
-    <a href="mailto:shellysgents@gmail.com">shellysgents@gmail.com</a>
-  </div>
-  <div style="margin-top:16px; font-size:12px; color:#7a6a5a;">
-    © 2026 Gents Barbershop. All rights reserved.
-    <span class="footer-sep">·</span>
-    <a href="/booking">Book an Appointment</a>
-    <span class="footer-sep">·</span>
-    <a href="/login.html">Staff Login</a>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <img class="footer-brand-img" src="/images/gents/hero.jpg" alt="Gents Barbershop" loading="lazy">
+        <p class="footer-brand-tagline">Traditional barbershop values with a modern touch. Serving Hampton, NH and the Seacoast since our founding.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Hours</div>
+        <div class="footer-hours-row"><span>Mon – Tue</span><span>10am – 6pm</span></div>
+        <div class="footer-hours-row"><span>Wednesday</span><span class="footer-hours-closed">Closed</span></div>
+        <div class="footer-hours-row"><span>Thursday</span><span>10am – 5pm</span></div>
+        <div class="footer-hours-row"><span>Friday</span><span>10am – 6pm</span></div>
+        <div class="footer-hours-row"><span>Sat – Sun</span><span>9am – 3pm</span></div>
+      </div>
+      <div>
+        <div class="footer-col-title">Contact</div>
+        <ul class="footer-links">
+          <li><a href="tel:6036018615">603-601-8615</a></li>
+          <li><a href="mailto:shellysgents@gmail.com">shellysgents@gmail.com</a></li>
+          <li><a href="https://maps.google.com/?q=893+Lafayette+Road,+Hampton,+NH" target="_blank" rel="noopener">893 Lafayette Road<br>Hampton, NH 03842</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Follow</div>
+        <a class="footer-social-link" href="https://www.instagram.com/gentsbarbershophampton" target="_blank" rel="noopener">📷 @gentsbarbershophampton</a>
+        <div style="margin-top:20px">
+          <div class="footer-col-title" style="margin-top:0">Quick Links</div>
+          <ul class="footer-links">
+            <li><a href="/booking">Book Appointment</a></li>
+            <li><a href="/#services">Services</a></li>
+            <li><a href="/#pricing">Pricing</a></li>
+            <li><a href="/#gallery">Gallery</a></li>
+            <li><a href="/login.html">Staff Login</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 Gents Barbershop. All rights reserved.</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <a href="/booking">Book an Appointment</a>
+        <span style="opacity:.3">◆</span>
+        <a href="/login.html">Staff Login</a>
+      </div>
+    </div>
   </div>
 </footer>
 
 <!-- ── MOBILE FLOATING CTA ── -->
-<div id="float-cta" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;background:linear-gradient(transparent,rgba(26,7,7,.95));padding:16px 20px 20px">
-  <a href="/booking" style="display:block;background:#c9a95a;color:#1a0707;text-align:center;padding:15px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;letter-spacing:.3px;box-shadow:0 4px 20px rgba(0,0,0,.4)">
+<div id="float-cta" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;background:linear-gradient(transparent,rgba(15,3,3,.97));padding:16px 20px 20px">
+  <a href="/booking" style="display:block;background:linear-gradient(135deg,#c9a95a,#e8c97a);color:#1a0707;text-align:center;padding:16px;border-radius:12px;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;text-decoration:none;letter-spacing:.3px;box-shadow:0 4px 20px rgba(0,0,0,.4)">
     ✂ Book Your Appointment
   </a>
 </div>
@@ -678,21 +935,33 @@ function closeMenu() {
   document.getElementById('nav-links').classList.remove('open');
 }
 
+// Frosted glass nav on scroll
+(function() {
+  var nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 60) {
+      nav.classList.add('scrolled');
+    } else {
+      nav.classList.remove('scrolled');
+    }
+  }, { passive: true });
+})();
+
 // Load team from API
 fetch('/api/barbers')
   .then(r => r.json())
   .then(barbers => {
     const grid = document.getElementById('team-grid');
-    if (!barbers || !barbers.length) { grid.innerHTML = '<p style="color:#888;text-align:center">Meet our team in person!</p>'; return; }
+    if (!barbers || !barbers.length) { grid.innerHTML = '<p style="color:#666;text-align:center">Meet our team in person!</p>'; return; }
     grid.innerHTML = barbers.map(b => `
-      <div class="team-card-dynamic" style="text-align:center;background:#faf8f4;border-radius:14px;padding:28px 20px;border:1px solid #e4ddd0">
-        <div style="width:88px;height:88px;border-radius:50%;margin:0 auto 14px;overflow:hidden;border:3px solid #c9a95a;background:#e4ddd0;display:flex;align-items:center;justify-content:center;font-size:36px">
+      <div class="team-card-dynamic" style="text-align:center;background:#1a0707;border-radius:16px;padding:32px 20px 28px;border:1px solid rgba(201,169,90,.2);border-top:3px solid #c9a95a">
+        <div style="width:96px;height:96px;border-radius:50%;margin:0 auto 18px;overflow:hidden;border:2px solid rgba(201,169,90,.5);background:#2a0a0a;display:flex;align-items:center;justify-content:center;font-size:38px">
           ${b.photo_url ? `<img src="${b.photo_url}" alt="${b.name}" style="width:100%;height:100%;object-fit:cover" loading="lazy">` : '✂'}
         </div>
-        <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;color:#1a0707;margin-bottom:6px">${b.name}</div>
-        <div style="font-size:12px;color:#8b1a1a;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Barber</div>
-        <div style="font-size:13px;color:#666;line-height:1.6">${b.bio || 'Professional barber dedicated to your satisfaction.'}</div>
-        <a href="/booking" style="display:inline-block;margin-top:16px;background:#8b1a1a;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">Book with ${b.name.split(' ')[0]} →</a>
+        <div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:700;color:#fff;margin-bottom:6px">${b.name}</div>
+        <div style="font-family:'Inter',sans-serif;font-size:11px;color:#c9a95a;font-weight:600;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">Barber</div>
+        <div style="font-family:'Inter',sans-serif;font-size:13px;color:#c8a888;line-height:1.7;font-weight:300">${b.bio || 'Professional barber dedicated to your satisfaction.'}</div>
+        <a href="/booking" style="display:inline-block;margin-top:20px;background:linear-gradient(135deg,#c9a95a,#e8c97a);color:#1a0707;padding:9px 22px;border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;text-decoration:none;letter-spacing:.3px">Book with ${b.name.split(' ')[0]} →</a>
       </div>
     `).join('');
   }).catch(e => console.error('[team]', e));
@@ -718,23 +987,45 @@ fetch('/api/services')
     if (!services.length) { grid.innerHTML='<p style="color:#888">No services available.</p>'; return; }
     const icons = ['✂','💈','👦','🧒','🎖️','🪒','💆','⭐'];
     grid.innerHTML = services.map((s,i) => `
-      <div class="price-card" style="background:#fff;border-radius:14px;padding:24px 22px;border:1px solid #e4ddd0;display:flex;flex-direction:column;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
-        <div style="font-size:28px;margin-bottom:6px">${icons[i%icons.length]}</div>
-        <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;color:#1a0707;line-height:1.3">${s.name}</div>
-        <div style="font-size:13px;color:#777;line-height:1.6;flex:1">${s.description||''}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:12px;border-top:1px solid #f0ebe3">
-          <span style="font-size:24px;font-weight:800;color:#8b1a1a">$${(s.price_cents/100).toFixed(0)}</span>
-          <span style="font-size:12px;color:#999;background:#f5f0e8;padding:4px 10px;border-radius:20px">${s.duration_min} min</span>
+      <div class="price-card" style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e4ddd0;border-top:3px solid #c9a95a;display:flex;flex-direction:column;gap:6px;box-shadow:0 2px 12px rgba(0,0,0,.06)">
+        <div style="font-size:30px;margin-bottom:8px">${icons[i%icons.length]}</div>
+        <div style="font-family:'Playfair Display',Georgia,serif;font-size:17px;font-weight:700;color:#1a0707;line-height:1.3">${s.name}</div>
+        <div style="font-family:'Inter',sans-serif;font-size:13px;color:#777;line-height:1.65;flex:1;font-weight:300">${s.description||''}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:14px;border-top:1px solid #f0ebe3">
+          <span style="font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:#8b1a1a">$${(s.price_cents/100).toFixed(0)}</span>
+          <span style="font-family:'Inter',sans-serif;font-size:12px;color:#999;background:#f5f0e8;padding:4px 12px;border-radius:20px;font-weight:500">${s.duration_min} min</span>
         </div>
-        <a href="/booking" class="price-card-btn" style="display:block;text-align:center;background:#f5f0e8;color:#8b1a1a;padding:9px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;margin-top:8px">Book This Service →</a>
+        <a href="/booking" class="price-card-btn" style="display:block;text-align:center;background:#f5f0e8;color:#8b1a1a;padding:10px;border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;text-decoration:none;margin-top:8px;letter-spacing:.3px">Book This Service →</a>
       </div>`).join('');
   }).catch(() => {
     document.getElementById('pricing-grid').innerHTML = `
-      <div style="background:#fff;border-radius:12px;padding:22px 24px;border:1px solid #e4ddd0">
-        <div style="font-weight:700;font-size:15px;margin-bottom:6px">Haircuts from $20</div>
-        <div style="font-size:13px;color:#777">Call us at <a href="tel:6036018615" style="color:#8b1a1a">603-601-8615</a> for current pricing.</div>
+      <div style="background:#fff;border-radius:12px;padding:22px 24px;border:1px solid #e4ddd0;border-top:3px solid #c9a95a">
+        <div style="font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:16px;margin-bottom:6px">Haircuts from $20</div>
+        <div style="font-family:'Inter',sans-serif;font-size:13px;color:#777">Call us at <a href="tel:6036018615" style="color:#8b1a1a">603-601-8615</a> for current pricing.</div>
       </div>`;
   });
+
+// Scroll-triggered fade-up via IntersectionObserver
+(function() {
+  if (!('IntersectionObserver' in window)) {
+    document.querySelectorAll('.fade-up').forEach(function(el) {
+      el.classList.add('visible');
+    });
+    return;
+  }
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.fade-up').forEach(function(el) {
+    observer.observe(el);
+  });
+})();
 </script>
 </body>
 </html>
