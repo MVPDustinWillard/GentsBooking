@@ -1,15 +1,16 @@
 // Load .env in development (ignored if not present)
 try { require('dotenv').config(); } catch(_) {}
 
-const express    = require('express');
-const Database   = require('better-sqlite3');
-const bcrypt     = require('bcryptjs');
-const session    = require('express-session');
-const multer     = require('multer');
-const twilio     = require('twilio');
-const path       = require('path');
-const fs         = require('fs');
-const cron       = require('node-cron');
+const express      = require('express');
+const compression  = require('compression');
+const Database     = require('better-sqlite3');
+const bcrypt       = require('bcryptjs');
+const session      = require('express-session');
+const multer       = require('multer');
+const twilio       = require('twilio');
+const path         = require('path');
+const fs           = require('fs');
+const cron         = require('node-cron');
 const crypto     = require('crypto');
 const emailCfg   = require('./email.config');
 
@@ -507,6 +508,7 @@ app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'home.ht
 app.get('/booking', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'booking.html')));
 app.get('/manage-booking/:token', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'manage-booking.html')));
 // ── Middleware ─────────────────────────────────────────────────────────────
+app.use(compression());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', etag: true }));
 // Serve uploaded photos from persistent volume on Railway
