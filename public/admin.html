@@ -1003,7 +1003,7 @@ async function init() {
     document.getElementById('btn-export').style.display = '';
     document.getElementById('rev-row').style.display = '';
     document.getElementById('nav-site').style.display = '';
-    const barbers = await fetch('/api/admin/barbers').then(r=>r.json());
+    const barbers = await fetch('/api/admin/barbers').then(r=>r.json()).catch(e=>{console.error('[init] barbers',e);return[];});
     allBarbers = barbers;
     const sel = document.getElementById('f-barber');
     barbers.filter(s=>s.role==='barber'||s.role==='stylist').forEach(s => {
@@ -1018,7 +1018,7 @@ async function init() {
     loadRevenue();
   }
   // Populate walk-in service select
-  const services = await fetch('/api/services').then(r=>r.json());
+  const services = await fetch('/api/services').then(r=>r.json()).catch(e=>{console.error('[init] services',e);return[];});
   const wsSel = document.getElementById('wi-service');
   services.forEach(s => {
     const o = document.createElement('option'); o.value=s.id;
@@ -1095,20 +1095,19 @@ function setStatus(s) {
 async function loadBookings() {
   const date = document.getElementById('f-date').value;
   const barberId = me.role==='admin' ? document.getElementById('f-barber').value : '';
-  let url = '/api/admin/bookings?';
-  if (currentStatus) url += `status=${currentStatus}&`;
-  if (currentView === 'upcoming') {
-    url += `date_from=${localDateStr()}&`;
-  } else if (date) {
-    url += `date=${date}&`;
-  }
-  if (barberId) url += `stylist_id=${barberId}&`;
-  const bookings = await fetch(url).then(r=>r.json());
-  renderBookings(bookings);
-  document.getElementById('s-total').textContent     = bookings.length;
-  document.getElementById('s-pending').textContent   = bookings.filter(b=>b.status==='pending').length;
-  document.getElementById('s-confirmed').textContent = bookings.filter(b=>b.status==='confirmed').length;
-  document.getElementById('s-cancelled').textContent = bookings.filter(b=>b.status==='cancelled').length;
+  const params = new URLSearchParams();
+  if (currentStatus) params.set('status', currentStatus);
+  if (currentView === 'upcoming') params.set('date_from', localDateStr());
+  else if (date) params.set('date', date);
+  if (barberId) params.set('stylist_id', barberId);
+  try {
+    const bookings = await fetch(`/api/admin/bookings?${params}`).then(r=>r.json());
+    renderBookings(bookings);
+    document.getElementById('s-total').textContent     = bookings.length;
+    document.getElementById('s-pending').textContent   = bookings.filter(b=>b.status==='pending').length;
+    document.getElementById('s-confirmed').textContent = bookings.filter(b=>b.status==='confirmed').length;
+    document.getElementById('s-cancelled').textContent = bookings.filter(b=>b.status==='cancelled').length;
+  } catch(e) { console.error('[loadBookings]', e); }
 }
 
 function renderBookings(bookings) {
@@ -1188,7 +1187,7 @@ async function assignBarber(bookingId, barberId) {
 
 // ── Team Management ───────────────────────────────────────
 async function loadTeam() {
-  const members = await fetch('/api/admin/barbers').then(r=>r.json());
+  const members = await fetch('/api/admin/barbers').then(r=>r.json()).catch(e=>{console.error('[loadTeam]',e);return[];});
   allBarbers = members;
   const grid = document.getElementById('team-grid');
   if (!members.length) { grid.innerHTML='<div style="color:#888;font-size:14px">No team members yet.</div>'; return; }

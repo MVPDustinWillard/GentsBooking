@@ -572,15 +572,19 @@ const fmtDate = d => {
 
 // ── Init ──────────────────────────────────────────────────
 async function init() {
-  const [services, barbers] = await Promise.all([
+  // Promise.allSettled: independent APIs — one failing doesn't break the other
+  const [svcResult, barbResult] = await Promise.allSettled([
     fetch('/api/services').then(r => r.json()),
     fetch('/api/barbers').then(r => r.json()),
   ]);
-  state.services = services;
-  state.barbers = barbers;
+  state.services = svcResult.status === 'fulfilled' ? svcResult.value : [];
+  state.barbers  = barbResult.status === 'fulfilled' ? barbResult.value : [];
+  if (svcResult.status  === 'rejected') console.error('[init] services failed:', svcResult.reason);
+  if (barbResult.status === 'rejected') console.error('[init] barbers failed:',  barbResult.reason);
   renderServices();
   renderBarbers();
-  const today = new Date().toISOString().split('T')[0];
+  // toLocaleDateString('sv') returns YYYY-MM-DD in local timezone (vs toISOString which is UTC)
+  const today = new Date().toLocaleDateString('sv');
   document.getElementById('date-picker').min = today;
   document.getElementById('date-picker').value = today;
 }
