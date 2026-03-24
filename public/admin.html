@@ -184,7 +184,7 @@
     .btn-del-bt:hover{background:#dc2626;color:#fff}
     .bt-add-form{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;max-width:700px;margin-bottom:20px}
     .bt-add-form h3{font-size:14px;font-weight:700;margin-bottom:14px}
-    .bt-add-row{display:grid;grid-template-columns:1fr 1fr 1fr 2fr auto;gap:10px;align-items:end}
+    .bt-add-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 2fr auto;gap:10px;align-items:end}
     @media(max-width:900px){.bt-add-row{grid-template-columns:1fr 1fr;}.bt-add-row>:last-child{grid-column:1/-1}}
 
     /* ── Visit stats ── */
@@ -436,9 +436,13 @@
     <!-- Block off time view (all staff) -->
     <div class="view" id="view-blocked">
       <div class="bt-add-form">
-        <h3>Block My Schedule</h3>
-        <p style="font-size:13px;color:#888;margin-bottom:14px">Pick a date and time range below — customers won't be able to book you during that window.</p>
+        <h3 id="bt-form-title">Block My Schedule</h3>
+        <p style="font-size:13px;color:#888;margin-bottom:14px">Pick a date and time range below — customers won't be able to book during that window.</p>
         <div class="bt-add-row">
+          <div id="bt-barber-wrap" style="display:none">
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;display:block;margin-bottom:4px">Staff Member</label>
+            <select id="bt-barber" class="filter-select" style="width:100%"></select>
+          </div>
           <div>
             <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;display:block;margin-bottom:4px">Date</label>
             <input type="date" id="bt-date" class="filter-date" style="width:100%">
@@ -1041,6 +1045,12 @@ async function init() {
     barbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active).forEach(s => {
       const o = document.createElement('option'); o.value=s.id; o.textContent=s.name; wbSel.appendChild(o);
     });
+    // Populate block-time barber select (admin can block for anyone)
+    const btSel = document.getElementById('bt-barber');
+    barbers.filter(s=>(s.role==='barber'||s.role==='stylist')&&s.active).forEach(s => {
+      const o = document.createElement('option'); o.value=s.id; o.textContent=s.name; btSel.appendChild(o);
+    });
+    document.getElementById('bt-barber-wrap').style.display = '';
     loadRevenue();
   }
   // Populate walk-in service select
@@ -1763,12 +1773,15 @@ async function saveReassign() {
 
 // ── Blocked times ──────────────────────────────────────────
 async function loadBlockedTimes() {
-  const list = await fetch('/api/barber/blocked-times').then(r=>r.json());
+  const isAdmin = me && me.role === 'admin';
+  const url = isAdmin ? '/api/admin/blocked-times' : '/api/barber/blocked-times';
+  const list = await fetch(url).then(r=>r.json()).catch(()=>[]);
   const wrap = document.getElementById('bt-list-wrap');
   if (!list.length) { wrap.innerHTML='<p style="color:#888;font-size:14px">No blocked times set. Use the form above to block off time.</p>'; return; }
   wrap.innerHTML = list.map(bt=>`
     <div class="bt-item">
       <div class="bt-info">
+        ${bt.barber_name ? `<div style="font-size:12px;font-weight:700;color:#8b1a1a;margin-bottom:2px">✂ ${esc(bt.barber_name)}</div>` : ''}
         <div class="bt-date">${fmtDate(bt.block_date)}</div>
         <div class="bt-time">${fmtTime(bt.block_start)} – ${fmtTime(bt.block_end)}</div>
         ${bt.reason?`<div class="bt-reason">${esc(bt.reason)}</div>`:''}
@@ -1778,6 +1791,9 @@ async function loadBlockedTimes() {
 }
 
 async function addBlockedTime() {
+  const isAdmin = me && me.role === 'admin';
+  const btBarberEl = document.getElementById('bt-barber');
+  const stylist_id = isAdmin ? btBarberEl.value : null;
   const date  = document.getElementById('bt-date').value;
   const start = document.getElementById('bt-start').value;
   const end   = document.getElementById('bt-end').value;
@@ -1785,12 +1801,18 @@ async function addBlockedTime() {
   const errEl = document.getElementById('bt-err');
   const okEl  = document.getElementById('bt-ok');
   errEl.classList.remove('show'); okEl.classList.remove('show');
+  if (isAdmin && !stylist_id) { errEl.textContent='Please select a staff member.'; errEl.classList.add('show'); return; }
   if (!date) { errEl.textContent='Please select a date.'; errEl.classList.add('show'); return; }
   if (start >= end) { errEl.textContent='Start time must be before end time.'; errEl.classList.add('show'); return; }
-  const r = await fetch('/api/barber/blocked-times',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({block_date:date,block_start:start,block_end:end,reason})});
+  const url  = isAdmin ? '/api/admin/blocked-times' : '/api/barber/blocked-times';
+  const body = isAdmin
+    ? { stylist_id: parseInt(stylist_id), block_date:date, block_start:start, block_end:end, reason }
+    : { block_date:date, block_start:start, block_end:end, reason };
+  const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const data = await r.json();
   if (!r.ok) { errEl.textContent=data.error; errEl.classList.add('show'); return; }
-  okEl.textContent='Time blocked successfully.'; okEl.classList.add('show');
+  const name = isAdmin ? btBarberEl.options[btBarberEl.selectedIndex].text : 'Your';
+  okEl.textContent=`${name}'s time blocked successfully.`; okEl.classList.add('show');
   setTimeout(()=>okEl.classList.remove('show'),3000);
   document.getElementById('bt-date').value='';
   document.getElementById('bt-reason').value='';
@@ -1799,7 +1821,9 @@ async function addBlockedTime() {
 
 async function deleteBlockedTime(id) {
   if (!confirm('Remove this blocked time?')) return;
-  await fetch(`/api/barber/blocked-times/${id}`,{method:'DELETE'});
+  const isAdmin = me && me.role === 'admin';
+  const url = isAdmin ? `/api/admin/blocked-times/${id}` : `/api/barber/blocked-times/${id}`;
+  await fetch(url, {method:'DELETE'});
   loadBlockedTimes();
 }
 

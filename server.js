@@ -1056,6 +1056,19 @@ app.delete('/api/admin/blocked-times/:id', requireAdmin, (req,res) => {
   res.json({ok:true});
 });
 
+// Admin: create blocked time for any barber
+app.post('/api/admin/blocked-times', requireAdmin, (req,res) => {
+  const { stylist_id, block_date, block_start, block_end, reason } = req.body;
+  if (!stylist_id||!block_date||!block_start||!block_end)
+    return res.status(400).json({error:'stylist_id, block_date, block_start, block_end required'});
+  if (block_start >= block_end) return res.status(400).json({error:'block_start must be before block_end'});
+  const r = db.prepare('INSERT INTO blocked_times (stylist_id,block_date,block_start,block_end,reason) VALUES (?,?,?,?,?)')
+    .run(stylist_id, block_date, block_start, block_end, reason||'');
+  res.status(201).json(
+    db.prepare('SELECT bt.*, s.name as barber_name FROM blocked_times bt JOIN stylists s ON bt.stylist_id=s.id WHERE bt.id=?').get(r.lastInsertRowid)
+  );
+});
+
 // Admin: Schedule view
 app.get('/api/admin/schedule', requireAuth, (req,res) => {
   const { date } = req.query;
