@@ -357,8 +357,8 @@ async function init() {
   state.barbers = barbers;
   renderServices();
   renderBarbers();
-  // Set min date to today
-  const today = new Date().toISOString().split('T')[0];
+  // Set min date to today (toLocaleDateString('sv') returns YYYY-MM-DD in local timezone)
+  const today = new Date().toLocaleDateString('sv');
   document.getElementById('date-picker').min = today;
   document.getElementById('date-picker').value = today;
 }
@@ -439,9 +439,22 @@ async function loadSlots() {
 
   const barberId = state.selectedBarber?.id;
   const url = `/api/availability?date=${date}${barberId ? `&stylist_id=${barberId}` : ''}`;
-  const { slots } = await fetch(url).then(r => r.json());
+
+  let data;
+  try {
+    data = await fetch(url).then(r => r.json());
+  } catch(_) {
+    document.getElementById('slots-grid').innerHTML = `<div class="no-slots">Couldn't load times. Please try again.</div>`;
+    return;
+  }
+
+  if (data.closed) {
+    document.getElementById('slots-grid').innerHTML = `<div class="no-slots">We're closed on this day. Please choose another date.</div>`;
+    return;
+  }
 
   const grid = document.getElementById('slots-grid');
+  const slots = data.slots || [];
   if (!slots.length) {
     grid.innerHTML = `<div class="no-slots">No available times on this date. Please choose another day.</div>`;
     return;

@@ -511,6 +511,9 @@ app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', etag: tru
 if (process.env.RAILWAY_ENVIRONMENT) {
   app.use('/uploads', express.static('/data/uploads', { maxAge: '7d', immutable: true }));
 }
+if (!process.env.SESSION_SECRET) {
+  console.warn('[WARN] SESSION_SECRET env var not set — using hardcoded fallback. Set SESSION_SECRET in Railway for production!');
+}
 app.use(session({
   secret: process.env.SESSION_SECRET || 'gents-barber-shop-secret-2026-xK9mP3rQ',
   resave: false,
