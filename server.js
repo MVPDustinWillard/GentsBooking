@@ -12,6 +12,7 @@ const path         = require('path');
 const fs           = require('fs');
 const cron         = require('node-cron');
 const crypto     = require('crypto');
+const rateLimit  = require('express-rate-limit');
 const emailCfg   = require('./email.config');
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
@@ -431,6 +432,121 @@ async function sendNoShowMessage(booking) {
   }
 }
 
+// ── Admin new-booking notification ────────────────────────────────────────
+async function sendAdminNewBookingNotification(booking) {
+  const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || emailCfg.smtp?.auth?.user || '';
+  if (!adminEmail) return;
+  const barber = booking.stylist_name || 'Any Available';
+  const price  = booking.price_cents ? ` — $${(booking.price_cents/100).toFixed(2)}` : '';
+  const subject = `New Booking: ${booking.customer_name} — ${booking.service_name} on ${fmtDateFn(booking.appointment_date)}`;
+  const html = `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#f5f0e8">
+      <div style="background:linear-gradient(135deg,#6b1212,#8B1A1A);padding:22px 28px;border-radius:12px 12px 0 0;border-bottom:4px solid #c9a95a">
+        <h1 style="color:#fff;margin:0;font-size:20px;font-weight:700">New Booking Received</h1>
+        <p style="color:#e8c888;margin:4px 0 0;font-size:12px">Gents Barber Shop</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e4ddd0;border-top:none;padding:24px 28px;border-radius:0 0 12px 12px">
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          <tr><td style="padding:9px 0;color:#888;width:35%;border-bottom:1px solid #f0f0f0">Customer</td><td style="padding:9px 0;font-weight:700;color:#1a0707;border-bottom:1px solid #f0f0f0">${booking.customer_name}</td></tr>
+          <tr><td style="padding:9px 0;color:#888;border-bottom:1px solid #f0f0f0">Email</td><td style="padding:9px 0;border-bottom:1px solid #f0f0f0"><a href="mailto:${booking.customer_email}" style="color:#8B1A1A">${booking.customer_email}</a></td></tr>
+          <tr><td style="padding:9px 0;color:#888;border-bottom:1px solid #f0f0f0">Phone</td><td style="padding:9px 0;color:#1a0707;border-bottom:1px solid #f0f0f0">${booking.customer_phone || 'Not provided'}</td></tr>
+          <tr><td style="padding:9px 0;color:#888;border-bottom:1px solid #f0f0f0">Service</td><td style="padding:9px 0;font-weight:600;color:#1a0707;border-bottom:1px solid #f0f0f0">${booking.service_name}${price}</td></tr>
+          <tr><td style="padding:9px 0;color:#888;border-bottom:1px solid #f0f0f0">Barber</td><td style="padding:9px 0;color:#1a0707;border-bottom:1px solid #f0f0f0">${barber}</td></tr>
+          <tr><td style="padding:9px 0;color:#888;border-bottom:1px solid #f0f0f0">Date</td><td style="padding:9px 0;font-weight:600;color:#1a0707;border-bottom:1px solid #f0f0f0">${fmtDateFn(booking.appointment_date)}</td></tr>
+          <tr><td style="padding:9px 0;color:#888">Time</td><td style="padding:9px 0;font-weight:800;color:#8B1A1A;font-size:16px">${fmtTimeFn(booking.appointment_time)}</td></tr>
+        </table>
+        ${booking.notes ? `<div style="background:#fffbf0;border:1px solid #e8dcc0;border-radius:8px;padding:12px 16px;margin-top:16px"><p style="font-size:13px;color:#6b5a30;margin:0"><strong>Notes:</strong> ${booking.notes}</p></div>` : ''}
+        <div style="text-align:center;margin-top:20px">
+          <a href="${BASE_URL}/admin.html" style="display:inline-block;padding:11px 28px;background:#8B1A1A;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">View in Dashboard →</a>
+        </div>
+      </div>
+    </div>`;
+  await sendEmail(adminEmail, subject, html);
+  console.log(`[email] Sent new-booking notification to admin (${adminEmail})`);
+}
+
+// ── Reschedule confirmation ────────────────────────────────────────────────
+async function sendRescheduleConfirmation(booking) {
+  const barber = booking.stylist_name || 'Your barber';
+  const price  = booking.price_cents ? `$${(booking.price_cents/100).toFixed(2)}` : '';
+  const subject = `Booking Rescheduled — ${fmtDateFn(booking.appointment_date)} at ${fmtTimeFn(booking.appointment_time)}`;
+  const html = `
+    <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;background:#f5f0e8">
+      <div style="background:linear-gradient(135deg,#6b1212,#8B1A1A);padding:28px;text-align:center;border-radius:12px 12px 0 0;border-bottom:4px solid #c9a95a">
+        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Gents Barber Shop</h1>
+        <p style="color:#e8c888;margin:5px 0 0;font-size:12px;letter-spacing:0.3px">893 Lafayette Road · Hampton, New Hampshire</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e4ddd0;border-top:none;padding:30px 28px;border-radius:0 0 12px 12px">
+        <h2 style="margin:0 0 8px;color:#1a0707;font-size:20px">📅 Your Appointment Has Been Rescheduled</h2>
+        <p style="color:#555;margin:0 0 24px;font-size:14px;line-height:1.7;font-family:sans-serif">
+          Hi ${booking.customer_name.split(' ')[0]}! Your appointment has been successfully rescheduled. Here are your updated details:
+        </p>
+        <div style="background:#f5f0e8;border-radius:10px;border:1px solid #e4ddd0;overflow:hidden;margin-bottom:24px">
+          <div style="background:#1a0707;padding:10px 18px">
+            <span style="color:#c9a95a;font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase">Updated Appointment</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:14px;font-family:sans-serif">
+            <tr><td style="padding:11px 18px;color:#888;width:40%;border-bottom:1px solid #ede8e0">Service</td><td style="padding:11px 18px;font-weight:600;color:#1a0707;border-bottom:1px solid #ede8e0">${booking.service_name}</td></tr>
+            <tr><td style="padding:11px 18px;color:#888;border-bottom:1px solid #ede8e0">Barber</td><td style="padding:11px 18px;color:#1a0707;border-bottom:1px solid #ede8e0">${barber}</td></tr>
+            <tr><td style="padding:11px 18px;color:#888;border-bottom:1px solid #ede8e0">New Date</td><td style="padding:11px 18px;font-weight:600;color:#1a0707;border-bottom:1px solid #ede8e0">${fmtDateFn(booking.appointment_date)}</td></tr>
+            <tr><td style="padding:11px 18px;color:#888;border-bottom:1px solid #ede8e0">New Time</td><td style="padding:11px 18px;font-weight:800;font-size:16px;color:#8B1A1A;border-bottom:1px solid #ede8e0">${fmtTimeFn(booking.appointment_time)}</td></tr>
+            ${price ? `<tr><td style="padding:11px 18px;color:#888">Price</td><td style="padding:11px 18px;font-weight:800;color:#8B1A1A;font-size:16px">${price}</td></tr>` : ''}
+          </table>
+        </div>
+        ${booking.cancel_token ? `
+        <div style="margin:0 0 24px;padding:18px;background:#fdf5f5;border:1px solid #e8c0c0;border-radius:10px;text-align:center">
+          <p style="font-size:13px;color:#666;margin:0 0 12px;font-family:sans-serif">Need to make another change? Manage your booking online.</p>
+          <a href="${BASE_URL}/manage-booking/${booking.cancel_token}" style="display:inline-block;padding:11px 28px;background:#8B1A1A;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;font-family:sans-serif">Manage My Booking →</a>
+        </div>` : ''}
+        <div style="text-align:center;padding-top:16px;border-top:1px solid #e4ddd0">
+          <p style="font-size:12px;color:#aaa;margin:0;font-family:sans-serif;line-height:1.8">
+            <strong style="color:#8B1A1A">Gents Barber Shop</strong><br>
+            893 Lafayette Road · Hampton, NH 03842<br>
+            <a href="tel:6036018615" style="color:#8B1A1A;text-decoration:none">603-601-8615</a>
+          </p>
+        </div>
+      </div>
+    </div>`;
+  await sendEmail(booking.customer_email, subject, html);
+  console.log(`[email] Sent reschedule confirmation to ${booking.customer_email}`);
+}
+
+// ── Review request (sent after appointment marked completed) ──────────────
+async function sendReviewRequest(booking) {
+  const first = booking.customer_name.split(' ')[0];
+  const subject = `How was your visit, ${first}? Leave us a review!`;
+  const html = `
+    <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;background:#f5f0e8">
+      <div style="background:linear-gradient(135deg,#6b1212,#8B1A1A);padding:28px;text-align:center;border-radius:12px 12px 0 0;border-bottom:4px solid #c9a95a">
+        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Gents Barber Shop</h1>
+        <p style="color:#e8c888;margin:5px 0 0;font-size:12px;letter-spacing:0.3px">893 Lafayette Road · Hampton, New Hampshire</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e4ddd0;border-top:none;padding:30px 28px;border-radius:0 0 12px 12px;text-align:center">
+        <div style="font-size:40px;margin-bottom:16px">⭐⭐⭐⭐⭐</div>
+        <h2 style="margin:0 0 12px;color:#1a0707;font-size:22px;font-family:Georgia,serif">Thanks for visiting, ${first}!</h2>
+        <p style="color:#555;margin:0 0 24px;font-size:14px;line-height:1.7;font-family:sans-serif">
+          We hope you loved your ${booking.service_name || 'visit'}! Your feedback means the world to us and helps other customers discover Gents.
+        </p>
+        <a href="https://g.page/r/gentsbarbershophampton/review" style="display:inline-block;padding:16px 36px;background:linear-gradient(135deg,#c9a95a,#e8c87a);color:#1a0707;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none;font-family:sans-serif;margin-bottom:24px">
+          Leave a Google Review ★
+        </a>
+        <p style="color:#888;font-size:13px;margin:0 0 24px;font-family:sans-serif">Takes only 30 seconds — and it makes a huge difference!</p>
+        <div style="border-top:1px solid #e4ddd0;padding-top:20px">
+          <p style="color:#555;font-size:13px;margin:0 0 16px;font-family:sans-serif">Ready for your next appointment?</p>
+          <a href="${BASE_URL}/booking" style="display:inline-block;padding:12px 28px;background:#8B1A1A;color:#fff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;font-family:sans-serif">Book Again →</a>
+        </div>
+        <div style="padding-top:20px;border-top:1px solid #e4ddd0;margin-top:20px">
+          <p style="font-size:12px;color:#aaa;margin:0;font-family:sans-serif;line-height:1.8">
+            <strong style="color:#8B1A1A">Gents Barber Shop</strong><br>
+            893 Lafayette Road · Hampton, NH 03842 · <a href="tel:6036018615" style="color:#8B1A1A;text-decoration:none">603-601-8615</a>
+          </p>
+        </div>
+      </div>
+    </div>`;
+  await sendEmail(booking.customer_email, subject, html);
+  console.log(`[email] Sent review request to ${booking.customer_email}`);
+}
+
 // ── Reminder scheduler ─────────────────────────────────────────────────────
 function checkAndSendReminders() {
   const now = new Date();
@@ -510,6 +626,16 @@ app.get('/manage-booking/:token', (_req, res) => res.sendFile(path.join(__dirnam
 // ── Middleware ─────────────────────────────────────────────────────────────
 app.use(compression());
 app.use(express.json());
+
+// ── Rate limiters ──────────────────────────────────────────────────────────
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+});
+const bookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many booking requests. Please try again later.' },
+});
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', etag: true }));
 // Serve uploaded photos from persistent volume on Railway
 // Uploads use content-addressed filenames from multer — safe to cache aggressively
@@ -534,6 +660,9 @@ const requireAdmin = (req,res,next) => {
 };
 
 app.get('/barber-day', requireAuth, (_req, res) => res.sendFile(path.join(__dirname, 'public', 'barber-day.html')));
+
+// ── Health check ───────────────────────────────────────────────────────────
+app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() }));
 
 // ── Public API ─────────────────────────────────────────────────────────────
 app.get('/api/services', (_req,res) => res.json(db.prepare('SELECT * FROM services WHERE active=1').all()));
@@ -594,6 +723,36 @@ app.post('/api/booking/:token/cancel', (req, res) => {
   res.json({ok:true, message:'Your appointment has been cancelled.'});
 });
 
+app.post('/api/booking/:token/reschedule', async (req, res) => {
+  const { appointment_date, appointment_time } = req.body;
+  if (!appointment_date || !appointment_time) return res.status(400).json({error:'appointment_date and appointment_time required'});
+  const b = db.prepare(`
+    SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min
+    FROM bookings b
+    LEFT JOIN stylists s ON b.stylist_id=s.id
+    LEFT JOIN services svc ON b.service_id=svc.id
+    WHERE b.cancel_token=?`).get(req.params.token);
+  if (!b) return res.status(404).json({error:'Booking not found'});
+  if (!['pending','confirmed'].includes(b.status))
+    return res.status(400).json({error:`This booking cannot be rescheduled (status: ${b.status}).`});
+  const [yr, mo, dy] = b.appointment_date.split('-').map(Number);
+  const apptMs = new Date(yr, mo - 1, dy, ...b.appointment_time.split(':').map(Number)).getTime();
+  if (apptMs - Date.now() < 2 * 60 * 60 * 1000)
+    return res.status(400).json({error:'Reschedules require at least 2 hours notice. Please call us at 603-601-8615.'});
+  const conflict = db.prepare(
+    "SELECT id FROM bookings WHERE stylist_id IS ? AND appointment_date=? AND appointment_time=? AND status!='cancelled' AND id!=?"
+  ).get(b.stylist_id||null, appointment_date, appointment_time, b.id);
+  if (conflict) return res.status(409).json({error:'That time slot is not available. Please choose another.'});
+  db.prepare('UPDATE bookings SET appointment_date=?, appointment_time=? WHERE id=?')
+    .run(appointment_date, appointment_time, b.id);
+  const updated = db.prepare(`
+    SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min
+    FROM bookings b LEFT JOIN stylists s ON b.stylist_id=s.id LEFT JOIN services svc ON b.service_id=svc.id
+    WHERE b.id=?`).get(b.id);
+  sendRescheduleConfirmation(updated).catch(e => console.error('[reschedule email]', e.message));
+  res.json({ok:true, booking: updated});
+});
+
 // Walk-in availability: only checks null-stylist conflicts (for admin walk-in modal)
 app.get('/api/admin/walkin-availability', requireAuth, (req, res) => {
   const { date } = req.query;
@@ -603,7 +762,7 @@ app.get('/api/admin/walkin-availability', requireAuth, (req, res) => {
   res.json({ slots: ALL_SLOTS.filter(s=>!taken.has(s)) });
 });
 
-app.post('/api/bookings', async (req,res) => {
+app.post('/api/bookings', bookingLimiter, async (req,res) => {
   const { customer_name, customer_email, customer_phone, stylist_id, service_id, appointment_date, appointment_time, notes } = req.body;
   if (!customer_name||!customer_email||!service_id||!appointment_date||!appointment_time)
     return res.status(400).json({error:'Missing required fields'});
@@ -648,14 +807,15 @@ app.post('/api/bookings', async (req,res) => {
     LEFT JOIN services svc ON b.service_id=svc.id
     WHERE b.id=?`).get(r.lastInsertRowid);
 
-  // Send confirmation email (non-blocking)
+  // Send confirmation email + admin notification (non-blocking)
   sendBookingConfirmation(booking).catch(e => console.error('[email error]', e.message));
+  sendAdminNewBookingNotification(booking).catch(e => console.error('[admin notify error]', e.message));
 
   res.status(201).json(booking);
 });
 
 // ── Auth ───────────────────────────────────────────────────────────────────
-app.post('/api/auth/login', (req,res) => {
+app.post('/api/auth/login', loginLimiter, (req,res) => {
   const { username, password } = req.body;
   const s = db.prepare('SELECT * FROM stylists WHERE username=? AND active=1').get(username);
   if (!s||!bcrypt.compareSync(password, s.password_hash))
@@ -744,6 +904,11 @@ app.patch('/api/admin/bookings/:id', requireAdmin, async (req,res) => {
   if (status === 'no_show' && b.status !== 'no_show') {
     const full = db.prepare(`SELECT b.*, s.name as stylist_name, svc.name as service_name FROM bookings b LEFT JOIN stylists s ON b.stylist_id=s.id LEFT JOIN services svc ON b.service_id=svc.id WHERE b.id=?`).get(req.params.id);
     sendNoShowMessage(full).catch(e => console.error('[no-show email error]', e.message));
+  }
+  // Send review request if status changed to completed
+  if (status === 'completed' && b.status !== 'completed') {
+    const full = db.prepare(`SELECT b.*, s.name as stylist_name, svc.name as service_name FROM bookings b LEFT JOIN stylists s ON b.stylist_id=s.id LEFT JOIN services svc ON b.service_id=svc.id WHERE b.id=?`).get(req.params.id);
+    sendReviewRequest(full).catch(e => console.error('[review email error]', e.message));
   }
   res.json(db.prepare('SELECT * FROM bookings WHERE id=?').get(req.params.id));
 });
@@ -985,6 +1150,7 @@ app.post('/api/admin/bookings/create', requireAuth, async (req, res) => {
     .run(customer_email, customer_name, customer_phone||'');
   const booking = db.prepare(`SELECT b.*, s.name as stylist_name, svc.name as service_name, svc.price_cents, svc.duration_min FROM bookings b LEFT JOIN stylists s ON b.stylist_id=s.id LEFT JOIN services svc ON b.service_id=svc.id WHERE b.id=?`).get(r.lastInsertRowid);
   sendBookingConfirmation(booking).catch(e => console.error('[walkin email]', e.message));
+  sendAdminNewBookingNotification(booking).catch(e => console.error('[admin notify error]', e.message));
   res.status(201).json(booking);
 });
 
@@ -1219,4 +1385,16 @@ app.listen(PORT, () => {
   console.log(`\n✂  Gents Barber Shop — http://localhost:${PORT}`);
   console.log(emailCfg.enabled ? '[email] SMTP configured — emails will be sent' : '[email] Dev mode — emails logged to console only');
   console.log('\nDefault logins: marcus/marcus123  james/james123  derek/derek123  admin/admin123\n');
+});
+
+// ── Graceful shutdown ──────────────────────────────────────────────────────
+process.on('SIGTERM', () => {
+  console.log('[shutdown] SIGTERM received, closing gracefully...');
+  db.close();
+  process.exit(0);
+});
+process.on('SIGINT', () => {
+  console.log('[shutdown] SIGINT received, closing gracefully...');
+  db.close();
+  process.exit(0);
 });

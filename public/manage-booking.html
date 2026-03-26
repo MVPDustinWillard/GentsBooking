@@ -78,6 +78,21 @@
     .status-no_show   { background: #fce7f3; color: #9d174d; }
 
     /* Buttons */
+    .btn-reschedule { width: 100%; padding: 13px; background: #1a0707; color: var(--gold); border: 2px solid var(--gold); border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 16px; transition: all .15s; font-family: inherit; }
+    .btn-reschedule:hover { background: var(--gold); color: #1a0707; }
+    .reschedule-form { margin-top: 16px; }
+    .reschedule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .field-group { display: flex; flex-direction: column; }
+    .field-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-bottom: 6px; }
+    .field-input { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; width: 100%; }
+    .field-input:focus { outline: none; border-color: var(--accent); }
+    .reschedule-actions { display: flex; gap: 10px; margin-top: 4px; }
+    .btn-confirm-reschedule { flex: 1; padding: 12px; background: #1a7a4a; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .15s; }
+    .btn-confirm-reschedule:hover:not(:disabled) { background: #155f39; }
+    .btn-confirm-reschedule:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-cancel-reschedule { padding: 12px 20px; background: #f0f0f0; color: #555; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s; }
+    .btn-cancel-reschedule:hover { background: #e0e0e0; }
+    @media(max-width:400px) { .reschedule-grid { grid-template-columns: 1fr; } }
     .btn-cancel { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 20px; transition: background .15s; }
     .btn-cancel:hover { background: #6b1212; }
     .btn-cancel:disabled { background: #ccc; cursor: not-allowed; }
@@ -110,7 +125,7 @@
 
 <nav id="manage-nav">
   <a class="nav-logo" href="/">
-    <img src="/images/gents/hero.jpg" alt="Gents">
+    <img src="/images/gents/logo.png" alt="Gents">
     <span>Gents Barbershop</span>
   </a>
   <a class="nav-back" href="/booking">Book Another Appointment &rarr;</a>
@@ -145,7 +160,28 @@
       <div class="alert alert-error" id="cancel-err"></div>
 
       <div id="cancel-section">
-        <div class="notice">
+        <button class="btn-reschedule" id="btn-show-reschedule" onclick="showReschedule()">📅 Reschedule Appointment</button>
+        <div id="reschedule-form" class="reschedule-form" style="display:none">
+          <div class="reschedule-grid">
+            <div class="field-group">
+              <label class="field-label">New Date</label>
+              <input type="date" id="r-date" class="field-input" onchange="loadRescheduleSlots()">
+            </div>
+            <div class="field-group">
+              <label class="field-label">New Time</label>
+              <select id="r-time" class="field-input">
+                <option value="">— Pick a date first —</option>
+              </select>
+            </div>
+          </div>
+          <div class="alert alert-error" id="reschedule-err"></div>
+          <div class="reschedule-actions">
+            <button class="btn-confirm-reschedule" id="btn-confirm-reschedule" onclick="confirmReschedule()" disabled>Confirm New Time</button>
+            <button class="btn-cancel-reschedule" onclick="hideReschedule()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="notice" style="margin-top:16px">
           <strong>Need to cancel?</strong> You can cancel online up to 2 hours before your appointment.
           Cancellations within 2 hours require a phone call.
         </div>
@@ -163,6 +199,17 @@
       <p>Your appointment has been cancelled. We hope to see you again soon!</p>
       <a href="/booking" style="display:inline-block;margin-top:20px;padding:12px 28px;background:#8B1A1A;color:#fff;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">
         Book Again
+      </a>
+    </div>
+  </div>
+
+  <div class="card" id="card-rescheduled" style="display:none">
+    <div class="state state-success">
+      <div class="state-icon">📅</div>
+      <h2>Appointment Rescheduled!</h2>
+      <p id="reschedule-confirm-text">Your appointment has been rescheduled. A confirmation email has been sent.</p>
+      <a href="/booking" style="display:inline-block;margin-top:20px;padding:12px 28px;background:#8B1A1A;color:#fff;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">
+        Book Another
       </a>
     </div>
   </div>
@@ -197,7 +244,7 @@
   const statusClass = s => `status-badge status-${s}`;
 
   function show(id) {
-    ['card-loading','card-detail','card-success','card-notfound'].forEach(c => {
+    ['card-loading','card-detail','card-success','card-rescheduled','card-notfound'].forEach(c => {
       document.getElementById(c).style.display = c === id ? '' : 'none';
     });
   }
@@ -217,6 +264,7 @@
       document.getElementById('d-date').textContent = fmtDate(booking.appointment_date);
       document.getElementById('d-time').textContent = fmtTime(booking.appointment_time);
       document.getElementById('d-price').textContent = `$${(booking.price_cents / 100).toFixed(0)}`;
+      window._bookingStylistId = booking.stylist_id || '';
 
       // Show/hide cancel section based on status
       const canCancel = ['pending','confirmed'].includes(booking.status);
@@ -267,6 +315,72 @@
       errEl.classList.add('show');
       btn.disabled = false;
       btn.textContent = 'Cancel My Appointment';
+    }
+  }
+
+  function showReschedule() {
+    document.getElementById('reschedule-form').style.display = '';
+    document.getElementById('btn-show-reschedule').style.display = 'none';
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateInput = document.getElementById('r-date');
+    dateInput.min = tomorrow.toISOString().split('T')[0];
+    const max = new Date(); max.setDate(max.getDate() + 60);
+    dateInput.max = max.toISOString().split('T')[0];
+  }
+
+  function hideReschedule() {
+    document.getElementById('reschedule-form').style.display = 'none';
+    document.getElementById('btn-show-reschedule').style.display = '';
+    document.getElementById('r-date').value = '';
+    document.getElementById('r-time').innerHTML = '<option value="">— Pick a date first —</option>';
+    document.getElementById('btn-confirm-reschedule').disabled = true;
+    document.getElementById('reschedule-err').classList.remove('show');
+  }
+
+  async function loadRescheduleSlots() {
+    const date = document.getElementById('r-date').value;
+    const timeSelect = document.getElementById('r-time');
+    document.getElementById('btn-confirm-reschedule').disabled = true;
+    if (!date) { timeSelect.innerHTML = '<option value="">— Pick a date first —</option>'; return; }
+    timeSelect.innerHTML = '<option value="">Loading…</option>';
+    try {
+      const params = new URLSearchParams({ date });
+      if (window._bookingStylistId) params.set('stylist_id', window._bookingStylistId);
+      const slots = await fetch(`/api/availability?${params}`).then(r => r.json());
+      if (!Array.isArray(slots) || !slots.length) {
+        timeSelect.innerHTML = '<option value="">No available slots this day</option>';
+        return;
+      }
+      timeSelect.innerHTML = '<option value="">— Select a time —</option>' +
+        slots.map(s => `<option value="${s}">${fmtTime(s)}</option>`).join('');
+      timeSelect.onchange = () => { document.getElementById('btn-confirm-reschedule').disabled = !timeSelect.value; };
+    } catch(e) {
+      timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+    }
+  }
+
+  async function confirmReschedule() {
+    const date = document.getElementById('r-date').value;
+    const time = document.getElementById('r-time').value;
+    if (!date || !time) return;
+    const errEl = document.getElementById('reschedule-err');
+    const btn = document.getElementById('btn-confirm-reschedule');
+    errEl.classList.remove('show');
+    btn.disabled = true; btn.textContent = 'Rescheduling…';
+    try {
+      const res = await fetch(`/api/booking/${token}/reschedule`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ appointment_date: date, appointment_time: time })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      document.getElementById('reschedule-confirm-text').textContent =
+        `Rescheduled to ${fmtDate(date)} at ${fmtTime(time)}. A confirmation email has been sent.`;
+      show('card-rescheduled');
+    } catch(e) {
+      errEl.textContent = e.message; errEl.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Confirm New Time';
     }
   }
 

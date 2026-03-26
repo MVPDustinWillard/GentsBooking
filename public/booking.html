@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#8B1A1A">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/images/gents/logo.png">
   <title>Book an Appointment — Gents Barbershop</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap');
@@ -552,7 +554,8 @@
   <div class="notif-row" id="notif-row"></div>
 
   <div class="success-actions">
-    <button class="btn-cal" id="btn-cal" onclick="downloadCalendar()">📅 Add to Calendar</button>
+    <button class="btn-cal" id="btn-cal" onclick="downloadCalendar()">📅 Download .ics</button>
+    <a class="btn-cal" id="btn-gcal" href="#" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">📅 Google Calendar</a>
     <button class="btn btn-primary" onclick="location.reload()">Book Another</button>
   </div>
   <div style="text-align:center;margin-top:20px">
@@ -764,6 +767,7 @@ async function submitBooking() {
     document.getElementById('main-layout').style.display = 'none';
     document.getElementById('success-screen').classList.add('show');
     window._lastBooking = { ...data, customer_name: name, customer_email: email, customer_phone: phone };
+    document.getElementById('btn-gcal').href = buildGcalUrl(window._lastBooking);
     document.getElementById('success-ref').textContent = `Booking #${data.id}`;
     const rows = [
       ['Service', escHtml(data.service_name)],
@@ -812,6 +816,18 @@ function downloadCalendar() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = `gents-booking-${b.id}.ics`; a.click();
   URL.revokeObjectURL(a.href);
+}
+function buildGcalUrl(b) {
+  const [y,mo,d] = b.appointment_date.split('-').map(Number);
+  const [h,m]    = b.appointment_time.split(':').map(Number);
+  const start    = new Date(y, mo-1, d, h, m);
+  const end      = new Date(start.getTime() + (b.duration_min||30)*60000);
+  const pad      = n => String(n).padStart(2,'0');
+  const fmt      = dt => `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+  const title    = encodeURIComponent(`${b.service_name} at Gents Barber Shop`);
+  const details  = encodeURIComponent(`Booking #${b.id}\nBarber: ${b.stylist_name||'To be assigned'}\nPhone: 603-601-8615`);
+  const location = encodeURIComponent('893 Lafayette Road, Hampton, NH 03842');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}&location=${location}`;
 }
 
 // ── Sidebar ───────────────────────────────────────────────

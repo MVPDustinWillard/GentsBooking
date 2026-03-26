@@ -19,7 +19,27 @@
       "Bash(cmd.exe:*)",
       "Bash(powershell.exe:*)",
       "Bash(railway:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(start cmd:*)",
+      "Bash(where railway:*)",
+      "Bash(RAILWAY_TOKEN=9c059fc9-c4f3-46a8-9cec-0bcb05fe5814 railway whoami:*)",
+      "Bash(RAILWAY_TOKEN=9c059fc9-c4f3-46a8-9cec-0bcb05fe5814 railway:*)",
+      "Bash(RAILWAY_TOKEN=railway_effbf352-1b36-4621-8791-f7dcf7de2497 railway whoami:*)",
+      "Read(//c/Users/DustinWillard/Downloads/GentsBooking/$APPDATA/**)",
+      "Read(//c/Users/DustinWillard/Downloads/GentsBooking/$HOME/**)",
+      "Bash(mkdir -p \"$HOME/.railway\")",
+      "Bash(\"$HOME/.railway/config.json\")",
+      "Read(//c/Users/DustinWillard/Downloads/GentsBooking/$HOME/.railway/**)",
+      "Bash(gh:*)",
+      "Bash(cmd:*)",
+      "Bash(powershell:*)",
+      "Bash(Get-Process node:*)",
+      "Bash(python3:*)",
+      "Bash(kill 36852:*)",
+      "Bash(kill:*)",
+      "Bash(grep:*)",
+      "Bash(git:*)",
+      "Bash(do:*)"
     ]
   }
 }
